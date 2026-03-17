@@ -84,6 +84,12 @@ install(DIRECTORY
   config
   launch
   models
+  scripts/dashboard
   worlds
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+)
+
+install(DIRECTORY scripts/dashboard/
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}/dashboard
+  FILES_MATCHING PATTERN "*.py"
 )
