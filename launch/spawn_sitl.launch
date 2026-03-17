@@ -1,0 +1,58 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="vehicle_model" default="iris" />
+    <arg name="drone_prefix" default="nexus" />
+    <arg name="drone_id" default="$(eval arg('drone_prefix') + '0')" />
+    <arg name="instance" default="0" />
+    <arg name="sys_id" default="1" />
+    <arg name="x" default="0.0" />
+    <arg name="y" default="0.0" />
+    <arg name="z" default="0.2" />
+    <arg name="ardupilot_root" default="$(env HOME)/ardupilot" />
+    <arg name="ardupilot_gazebo_root" default="$(env HOME)/ardupilot_gazebo" />
+    <arg name="sitl_frame" default="gazebo-iris" />
+    <arg name="sitl_tcp_port" default="$(eval str(5760 + int(arg('instance')) * 10))" />
+    <arg name="fdm_port_in" default="$(eval str(9002 + int(arg('instance')) * 10))" />
+    <arg name="fdm_port_out" default="$(eval str(9003 + int(arg('instance')) * 10))" />
+    <arg name="rendered_model_file" default="$(eval '/tmp/swarm_gazebo_sim/' + arg('drone_id') + '_ardupilot.sdf')" />
+
+    <group ns="$(arg drone_id)">
+        <node name="model_spawner" pkg="swarm_gazebo_sim" type="spawn_ardupilot_model.py" output="screen">
+            <param name="template_path" value="$(arg ardupilot_gazebo_root)/models/iris_with_ardupilot/model.sdf" />
+            <param name="output_path" value="$(arg rendered_model_file)" />
+            <param name="model_name" value="$(arg drone_id)" />
+            <param name="to_ardupilot_port" value="$(arg fdm_port_out)" />
+            <param name="from_ardupilot_port" value="$(arg fdm_port_in)" />
+            <param name="x" value="$(arg x)" />
+            <param name="y" value="$(arg y)" />
+            <param name="z" value="$(arg z)" />
+        </node>
+
+        <node name="sitl_session_launcher" pkg="swarm_gazebo_sim" type="start_sitl_session.py" output="screen">
+            <param name="ardupilot_root" value="$(arg ardupilot_root)" />
+            <param name="ardupilot_gazebo_root" value="$(arg ardupilot_gazebo_root)" />
+            <param name="vehicle" value="ArduCopter" />
+            <param name="frame" value="$(arg sitl_frame)" />
+            <param name="instance" value="$(arg instance)" />
+            <param name="sysid" value="$(arg sys_id)" />
+            <param name="use_dir" value="$(eval '/tmp/ardupilot_sitl_' + arg('drone_id'))" />
+        </node>
+
+        <include file="$(find mavros)/launch/apm.launch">
+            <arg name="fcu_url" value="tcp://127.0.0.1:$(arg sitl_tcp_port)" />
+            <arg name="gcs_url" value="" />
+            <arg name="tgt_system" value="$(arg sys_id)" />
+            <arg name="tgt_component" value="1" />
+            <arg name="respawn_mavros" value="true" />
+        </include>
+
+        <node name="stream_rate_configurator" pkg="swarm_gazebo_sim" type="configure_stream_rates.py" output="screen">
+            <param name="state_topic" value="mavros/state" />
+            <param name="service_name" value="mavros/set_stream_rate" />
+            <param name="stream_id" value="0" />
+            <param name="message_rate" value="20" />
+            <param name="enable" value="true" />
+            <param name="connection_timeout" value="120.0" />
+        </node>
+    </group>
+</launch>

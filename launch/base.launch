@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="use_sim_time" default="true" />
+    <arg name="gui" default="true" />
+    <arg name="headless" default="false" />
+    <arg name="vehicle_model" default="iris" />
+    <arg name="drone_prefix" default="nexus" />
+    <arg name="scenario_config" default="$(find swarm_gazebo_sim)/config/uwb_simulator.yaml" />
+    <arg name="world_name" default="$(find swarm_gazebo_sim)/worlds/swarm_uwb.world" />
+    <arg name="ardupilot_gazebo_root" default="$(env HOME)/ardupilot_gazebo" />
+
+    <env name="GAZEBO_MODEL_PATH" value="$(eval arg('ardupilot_gazebo_root') + '/models:' + optenv('GAZEBO_MODEL_PATH', ''))" />
+    <env name="GAZEBO_RESOURCE_PATH" value="$(eval arg('ardupilot_gazebo_root') + '/worlds:' + optenv('GAZEBO_RESOURCE_PATH', ''))" />
+    <env name="GAZEBO_PLUGIN_PATH" value="$(eval arg('ardupilot_gazebo_root') + '/build:' + optenv('GAZEBO_PLUGIN_PATH', ''))" />
+
+    <include file="$(find gazebo_ros)/launch/empty_world.launch">
+        <arg name="debug" value="0" />
+        <arg name="verbose" value="0" />
+        <arg name="gui" value="$(arg gui)" />
+        <arg name="use_sim_time" value="$(arg use_sim_time)" />
+        <arg name="headless" value="$(arg headless)" />
+        <arg name="world_name" value="$(arg world_name)" />
+    </include>
+
+    <param name="vehicle_model" value="$(arg vehicle_model)" />
+    <param name="drone_prefix" value="$(arg drone_prefix)" />
+
+    <node name="uwb_simulator" pkg="swarm_gazebo_sim" type="uwb_simulator" respawn="false" output="screen">
+        <rosparam file="$(arg scenario_config)" command="load" />
+        <param name="model_prefix" value="$(arg drone_prefix)" />
+    </node>
+</launch>

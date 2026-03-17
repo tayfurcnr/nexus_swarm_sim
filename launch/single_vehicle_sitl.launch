@@ -1,0 +1,56 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="gui" default="true" />
+    <arg name="headless" default="false" />
+    <arg name="use_sim_time" default="true" />
+    <arg name="drone_prefix" default="nexus" />
+    <arg name="drone_id" default="$(eval arg('drone_prefix') + '0')" />
+    <arg name="model_prefix" default="iris_demo" />
+    <arg name="scenario_config" default="$(find swarm_gazebo_sim)/config/uwb_simulator.yaml" />
+    <arg name="ardupilot_root" default="$(env HOME)/ardupilot" />
+    <arg name="ardupilot_gazebo_root" default="$(env HOME)/ardupilot_gazebo" />
+    <arg name="sitl_frame" default="gazebo-iris" />
+    <arg name="sitl_vehicle" default="ArduCopter" />
+    <arg name="sitl_sysid" default="1" />
+    <arg name="sitl_instance" default="0" />
+    <arg name="sitl_tcp_port" default="5760" />
+    <arg name="world_name" default="$(eval arg('ardupilot_gazebo_root') + '/worlds/iris_arducopter_runway.world')" />
+
+    <include file="$(find swarm_gazebo_sim)/launch/base.launch">
+        <arg name="use_sim_time" value="$(arg use_sim_time)" />
+        <arg name="gui" value="$(arg gui)" />
+        <arg name="headless" value="$(arg headless)" />
+        <arg name="vehicle_model" value="iris" />
+        <arg name="drone_prefix" value="$(arg model_prefix)" />
+        <arg name="scenario_config" value="$(arg scenario_config)" />
+        <arg name="world_name" value="$(arg world_name)" />
+    </include>
+
+    <node name="sitl_session_launcher" pkg="swarm_gazebo_sim" type="start_sitl_session.py" output="screen">
+        <param name="ardupilot_root" value="$(arg ardupilot_root)" />
+        <param name="ardupilot_gazebo_root" value="$(arg ardupilot_gazebo_root)" />
+        <param name="vehicle" value="$(arg sitl_vehicle)" />
+        <param name="frame" value="$(arg sitl_frame)" />
+        <param name="instance" value="$(arg sitl_instance)" />
+        <param name="sysid" value="$(arg sitl_sysid)" />
+    </node>
+
+    <group ns="$(arg drone_id)">
+        <include file="$(find mavros)/launch/apm.launch">
+            <arg name="fcu_url" value="tcp://127.0.0.1:$(arg sitl_tcp_port)" />
+            <arg name="gcs_url" value="" />
+            <arg name="tgt_system" value="$(arg sitl_sysid)" />
+            <arg name="tgt_component" value="1" />
+            <arg name="respawn_mavros" value="true" />
+        </include>
+
+        <node name="stream_rate_configurator" pkg="swarm_gazebo_sim" type="configure_stream_rates.py" output="screen">
+            <param name="state_topic" value="mavros/state" />
+            <param name="service_name" value="mavros/set_stream_rate" />
+            <param name="stream_id" value="0" />
+            <param name="message_rate" value="20" />
+            <param name="enable" value="true" />
+            <param name="connection_timeout" value="30.0" />
+        </node>
+    </group>
+</launch>

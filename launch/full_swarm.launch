@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="use_sim_time" default="true" />
+    <arg name="gui" default="true" />
+    <arg name="headless" default="false" />
+    <arg name="num_drones" default="3" />
+    <arg name="vehicle_model" default="iris" />
+    <arg name="drone_prefix" default="nexus" />
+    <arg name="spawn_delay" default="2.0" />
+    <arg name="scenario_config" default="$(find swarm_gazebo_sim)/config/uwb_simulator.yaml" />
+    <arg name="world_name" default="$(find swarm_gazebo_sim)/worlds/swarm_uwb.world" />
+    <arg name="ardupilot_gazebo_root" default="$(env HOME)/ardupilot_gazebo" />
+
+    <include file="$(find swarm_gazebo_sim)/launch/base.launch">
+        <arg name="use_sim_time" value="$(arg use_sim_time)" />
+        <arg name="gui" value="$(arg gui)" />
+        <arg name="headless" value="$(arg headless)" />
+        <arg name="vehicle_model" value="$(arg vehicle_model)" />
+        <arg name="drone_prefix" value="$(arg drone_prefix)" />
+        <arg name="scenario_config" value="$(arg scenario_config)" />
+        <arg name="world_name" value="$(arg world_name)" />
+        <arg name="ardupilot_gazebo_root" value="$(arg ardupilot_gazebo_root)" />
+    </include>
+
+    <node name="swarm_launcher" pkg="swarm_gazebo_sim" type="swarm_launcher.py" output="screen">
+        <param name="num_drones" value="$(arg num_drones)" />
+        <param name="vehicle_model" value="$(arg vehicle_model)" />
+        <param name="drone_prefix" value="$(arg drone_prefix)" />
+        <param name="spawn_mode" value="ardupilot" />
+        <param name="spawn_delay" value="$(arg spawn_delay)" />
+    </node>
+</launch>

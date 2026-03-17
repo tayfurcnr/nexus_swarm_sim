@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<sdf version="1.6">
+  <model name="uwb_dummy">
+    <static>false</static>
+    <pose>0 0 0 0 0 0</pose>
+    <link name="base_link">
+      <pose>0 0 0.15 0 0 0</pose>
+      <inertial>
+        <mass>1.0</mass>
+        <inertia>
+          <ixx>0.02</ixx>
+          <ixy>0.0</ixy>
+          <ixz>0.0</ixz>
+          <iyy>0.02</iyy>
+          <iyz>0.0</iyz>
+          <izz>0.02</izz>
+        </inertia>
+      </inertial>
+      <collision name="collision">
+        <geometry>
+          <box>
+            <size>0.45 0.45 0.12</size>
+          </box>
+        </geometry>
+      </collision>
+      <visual name="visual">
+        <geometry>
+          <box>
+            <size>0.45 0.45 0.12</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>0.9 0.45 0.1 1</ambient>
+          <diffuse>0.9 0.45 0.1 1</diffuse>
+        </material>
+      </visual>
+    </link>
+  </model>
+</sdf>

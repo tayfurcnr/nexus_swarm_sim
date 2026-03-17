@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="drone_prefix" default="nexus"/>
+    <arg name="drone_id" default="$(eval arg('drone_prefix') + '0')"/>
+    <arg name="x" default="0.0"/>
+    <arg name="y" default="0.0"/>
+    <arg name="z" default="0.2"/>
+
+    <node
+        name="spawn_$(arg drone_id)"
+        pkg="gazebo_ros"
+        type="spawn_model"
+        output="screen"
+        args="-sdf -file $(find swarm_gazebo_sim)/models/sdf/uwb_dummy.sdf -model $(arg drone_id) -x $(arg x) -y $(arg y) -z $(arg z)"/>
+</launch>

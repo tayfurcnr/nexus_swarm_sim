@@ -1,0 +1,49 @@
+# Core UWB simulator configuration
+
+# Naming / discovery
+vehicle_model: "iris"            # Underlying Gazebo/SITL vehicle model
+drone_prefix: "nexus"            # Prefix used for spawned drone names / namespaces
+model_prefix: "nexus"            # Prefix the UWB simulator discovers from /gazebo/model_states
+
+# Topics
+ground_truth_topic: "/gazebo/model_states"
+pub_topic_prefix: "/uwb"
+
+# Global UWB parameters
+max_twr_freq: 100
+duty_cycle: 1.0
+publish_as_float: false
+
+# Update rate scheduling
+update_rate_hz: 15
+debug_rate_hz: 100
+
+# Dropout model
+p_drop_base: 0.01
+p_drop_slope: 0.005
+p_drop_max_distance: 100.0
+
+# Latency model
+latency_mu_ms: 5.0
+latency_sigma_ms: 2.0
+jitter_enabled: true
+
+# Outlier model
+outlier_probability: 0.02
+outlier_bias_min_m: 0.5
+outlier_bias_max_m: 2.0
+
+# LOS / NLOS model
+enable_los_check: true
+nlos_bias_mm: 150
+nlos_sigma_increase: 1.5
+
+# Neighbor selection
+k_neighbors: 3
+hysteresis_enter_m: 80.0
+hysteresis_exit_m: 100.0
+hysteresis_enabled: true
+
+# Debug options
+enable_debug_topics: false
+debug_verbose: false
