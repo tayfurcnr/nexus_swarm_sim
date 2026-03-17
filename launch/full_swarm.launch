@@ -10,6 +10,9 @@
     <arg name="scenario_config" default="$(find nexus_swarm_sim)/config/uwb_simulator.yaml" />
     <arg name="world_name" default="$(find nexus_swarm_sim)/worlds/swarm_uwb.world" />
     <arg name="ardupilot_gazebo_root" default="$(env HOME)/ardupilot_gazebo" />
+    <arg name="dashboard" default="$(arg headless)" />
+    <arg name="dashboard_host" default="0.0.0.0" />
+    <arg name="dashboard_port" default="8787" />
 
     <include file="$(find nexus_swarm_sim)/launch/base.launch">
         <arg name="use_sim_time" value="$(arg use_sim_time)" />
@@ -20,6 +23,9 @@
         <arg name="scenario_config" value="$(arg scenario_config)" />
         <arg name="world_name" value="$(arg world_name)" />
         <arg name="ardupilot_gazebo_root" value="$(arg ardupilot_gazebo_root)" />
+        <arg name="dashboard" value="$(arg dashboard)" />
+        <arg name="dashboard_host" value="$(arg dashboard_host)" />
+        <arg name="dashboard_port" value="$(arg dashboard_port)" />
     </include>
 
     <node name="swarm_launcher" pkg="nexus_swarm_sim" type="swarm_launcher.py" output="screen">

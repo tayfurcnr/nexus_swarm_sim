@@ -74,6 +74,7 @@ catkin_install_python(PROGRAMS
   scripts/start_sitl_session.py
   scripts/configure_stream_rates.py
   scripts/spawn_ardupilot_model.py
+  scripts/swarm_dashboard.py
   src/swarm_uwb_monitor.py
   scripts/swarm_launcher.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

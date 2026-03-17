@@ -31,6 +31,7 @@ A modular multi-UAV simulation framework for swarm autonomy research, combining 
 - [Runtime Data Flow](#runtime-data-flow)
 - [Namespaces](#namespaces)
 - [Operational Checks](#operational-checks)
+- [Web Dashboard](#web-dashboard)
 - [Topic Layout](#topic-layout)
 - [UWB Simulation Behavior](#uwb-simulation-behavior)
 - [Use Cases](#use-cases)
@@ -443,6 +444,30 @@ rostopic echo /nexus0/mavros/state
 rostopic echo /nexus0/uwb/range
 rostopic list | grep /uwb/
 rosnode list
+```
+
+## Web Dashboard
+
+All main launch modes can start a lightweight 2D dashboard.
+
+Default behavior:
+
+- `headless:=true` -> dashboard defaults to enabled
+- `headless:=false` -> dashboard defaults to disabled
+- `dashboard:=true/false` always overrides the default
+
+- Default URL: `http://localhost:8787`
+- Shows active vehicles, namespaces, host IP, FCU URL, and recent UWB links
+- Uses `docs/nexus.svg` with labels such as `NEXUS #1`, `NEXUS #2`, and so on
+
+You can override the bind address or port from launch:
+
+```bash
+roslaunch nexus_swarm_sim full_swarm.launch headless:=true
+```
+
+```bash
+roslaunch nexus_swarm_sim full_swarm.launch gui:=true headless:=false dashboard:=true
 ```
 
 ## Topic Layout

@@ -8,6 +8,9 @@
     <arg name="scenario_config" default="$(find nexus_swarm_sim)/config/uwb_simulator.yaml" />
     <arg name="world_name" default="$(find nexus_swarm_sim)/worlds/swarm_uwb.world" />
     <arg name="ardupilot_gazebo_root" default="$(env HOME)/ardupilot_gazebo" />
+    <arg name="dashboard" default="$(arg headless)" />
+    <arg name="dashboard_host" default="0.0.0.0" />
+    <arg name="dashboard_port" default="8787" />
 
     <env name="GAZEBO_MODEL_PATH" value="$(eval arg('ardupilot_gazebo_root') + '/models:' + optenv('GAZEBO_MODEL_PATH', ''))" />
     <env name="GAZEBO_RESOURCE_PATH" value="$(eval arg('ardupilot_gazebo_root') + '/worlds:' + optenv('GAZEBO_RESOURCE_PATH', ''))" />
@@ -28,5 +31,11 @@
     <node name="uwb_simulator" pkg="nexus_swarm_sim" type="uwb_simulator" respawn="false" output="screen">
         <rosparam file="$(arg scenario_config)" command="load" />
         <param name="model_prefix" value="$(arg drone_prefix)" />
+    </node>
+
+    <node if="$(arg dashboard)" name="swarm_dashboard" pkg="nexus_swarm_sim" type="swarm_dashboard.py" output="screen">
+        <param name="drone_prefix" value="$(arg drone_prefix)" />
+        <param name="host" value="$(arg dashboard_host)" />
+        <param name="port" value="$(arg dashboard_port)" />
     </node>
 </launch>

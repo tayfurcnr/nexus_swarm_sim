@@ -15,6 +15,9 @@
     <arg name="sitl_instance" default="0" />
     <arg name="sitl_tcp_port" default="5760" />
     <arg name="world_name" default="$(eval arg('ardupilot_gazebo_root') + '/worlds/iris_arducopter_runway.world')" />
+    <arg name="dashboard" default="$(arg headless)" />
+    <arg name="dashboard_host" default="0.0.0.0" />
+    <arg name="dashboard_port" default="8787" />
 
     <include file="$(find nexus_swarm_sim)/launch/base.launch">
         <arg name="use_sim_time" value="$(arg use_sim_time)" />
@@ -24,6 +27,9 @@
         <arg name="drone_prefix" value="$(arg model_prefix)" />
         <arg name="scenario_config" value="$(arg scenario_config)" />
         <arg name="world_name" value="$(arg world_name)" />
+        <arg name="dashboard" value="$(arg dashboard)" />
+        <arg name="dashboard_host" value="$(arg dashboard_host)" />
+        <arg name="dashboard_port" value="$(arg dashboard_port)" />
     </include>
 
     <node name="sitl_session_launcher" pkg="nexus_swarm_sim" type="start_sitl_session.py" output="screen">

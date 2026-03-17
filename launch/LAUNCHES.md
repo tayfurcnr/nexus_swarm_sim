@@ -17,6 +17,7 @@ Package name:
 - Lightweight smoke-test mode.
 - Spawns simple dummy models.
 - Does not require ArduPilot or MAVROS.
+- Starts the 2D web dashboard on `http://localhost:8787` when `headless:=true` by default.
 - Use this when you only want to verify UWB simulation and topics.
 
 Example:
@@ -28,6 +29,7 @@ roslaunch nexus_swarm_sim uwb_only.launch num_drones:=3 drone_prefix:=nexus
 - Visual/physics simulation mode with real Gazebo drone models.
 - Spawns Gazebo `iris_with_standoffs`-based models.
 - Does not require ArduPilot.
+- Starts the 2D web dashboard on `http://localhost:8787` when `headless:=true` by default.
 - Use this when you want to see realistic models in Gazebo while keeping the setup simpler than full SITL.
 
 Example:
@@ -39,6 +41,7 @@ roslaunch nexus_swarm_sim models_only.launch gui:=true headless:=false num_drone
 - Single-vehicle ArduPilot integration mode.
 - Uses the local `~/ardupilot_gazebo` world and model with `libArduPilotPlugin.so`.
 - Starts `sim_vehicle.py` and MAVROS for one vehicle.
+- Starts the 2D web dashboard on `http://localhost:8787` when `headless:=true` by default.
 - This is the correct place to validate SITL integration before rebuilding any multi-vehicle workflow.
 
 Example:
@@ -49,6 +52,7 @@ roslaunch nexus_swarm_sim single_vehicle_sitl.launch
 ### `full_swarm.launch`
 - Full multi-vehicle ArduPilot mode.
 - Starts Gazebo, multiple SITL instances, MAVROS, and the `/uwb_simulator`.
+- Starts the 2D web dashboard on `http://localhost:8787` when `headless:=true` by default.
 - This is the main end-to-end swarm launch.
 
 Example:
@@ -73,6 +77,12 @@ These are helper launch files. They are normally started by `scripts/swarm_launc
 - Used by `full_swarm.launch`.
 
 ## Practical Defaults
+
+Dashboard defaults:
+- `dashboard:=true` when `headless:=true`
+- `dashboard:=false` when `headless:=false`
+- `dashboard_host:=0.0.0.0`
+- `dashboard_port:=8787`
 
 If you do not override arguments:
 - `vehicle_model:=iris`
