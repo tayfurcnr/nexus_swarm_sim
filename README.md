@@ -63,15 +63,15 @@ This project provides all three in a single reproducible stack.
 ### Full Swarm (recommended)
 
 ```bash
-mkdir -p ~/swarm_uwb_sim_ws/src
-cd ~/swarm_uwb_sim_ws/src
+mkdir -p ~/nexus_swarm_sim_ws/src
+cd ~/nexus_swarm_sim_ws/src
 
 git clone https://github.com/tayfurcnr/nexus_swarm_sim.git
 cd nexus_swarm_sim
 
 bash setup_ardupilot_noetic.sh
 
-source ~/swarm_uwb_sim_ws/devel/setup.bash
+source ~/nexus_swarm_sim_ws/devel/setup.bash
 
 roslaunch nexus_swarm_sim full_swarm.launch num_drones:=3
 ```
@@ -179,8 +179,14 @@ There are three practical ways to use this repository.
 
 Expected workspaces:
 
-- setup script default workspace: `~/swarm_uwb_sim_ws/src/nexus_swarm_sim`
+- setup script default workspace: `~/nexus_swarm_sim_ws/src/nexus_swarm_sim`
 - manual catkin workspace example: `~/catkin_ws/src/nexus_swarm_sim`
+
+You can override the script workspace if needed:
+
+```bash
+WORKSPACE_DIR=~/catkin_ws bash setup_ardupilot_noetic.sh
+```
 
 ### If ArduPilot Is Already Installed
 
@@ -256,7 +262,7 @@ source ~/.bashrc
 Then source the generated workspace:
 
 ```bash
-cd ~/swarm_uwb_sim_ws
+cd ~/nexus_swarm_sim_ws
 source devel/setup.bash
 ```
 
