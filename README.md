@@ -125,7 +125,7 @@ Default runtime naming:
 |---|---|
 | `vehicle_model` | `iris` |
 | `drone_prefix` | `nexus` |
-| Generated names | `nexus0`, `nexus1`, `nexus2`, ... |
+| Generated names | `nexus1`, `nexus2`, `nexus3`, ... |
 
 Runtime sketch:
 
@@ -418,16 +418,16 @@ Each drone runs in its own namespace. This is critical for any multi-vehicle wor
 
 Examples:
 
-- `/nexus0/`
 - `/nexus1/`
 - `/nexus2/`
+- `/nexus3/`
 
 Typical per-vehicle topics:
 
-- `/nexus0/mavros/state`
-- `/nexus0/mavros/local_position/pose`
-- `/nexus0/uwb/range`
-- `/nexus0/uwb/raw_signal`
+- `/nexus1/mavros/state`
+- `/nexus1/mavros/local_position/pose`
+- `/nexus1/uwb/range`
+- `/nexus1/uwb/raw_signal`
 
 ## Operational Checks
 
@@ -440,8 +440,8 @@ rosrun nexus_swarm_sim swarm_uwb_monitor.py
 Useful commands:
 
 ```bash
-rostopic echo /nexus0/mavros/state
-rostopic echo /nexus0/uwb/range
+rostopic echo /nexus1/mavros/state
+rostopic echo /nexus1/uwb/range
 rostopic list | grep /uwb/
 rosnode list
 ```
@@ -550,7 +550,7 @@ def range_callback(msg):
 
 
 rospy.init_node("my_localization_node")
-rospy.Subscriber("/nexus0/uwb/range", UwbRange, range_callback)
+rospy.Subscriber("/nexus1/uwb/range", UwbRange, range_callback)
 rospy.spin()
 ```
 

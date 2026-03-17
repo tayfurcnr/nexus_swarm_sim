@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
     <arg name="drone_prefix" default="nexus"/>
-    <arg name="drone_id" default="$(eval arg('drone_prefix') + '0')"/>
+    <arg name="drone_id" default="$(eval arg('drone_prefix') + '1')"/>
     <arg name="x" default="0.0"/>
     <arg name="y" default="0.0"/>
     <arg name="z" default="0.2"/>

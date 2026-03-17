@@ -91,7 +91,7 @@ class UWBPayloadCodec:
 
 
 class PayloadInjector:
-    def __init__(self, drone_id="nexus0"):
+    def __init__(self, drone_id="nexus1"):
         self.drone_id = drone_id
         self.drone_num = self._parse_drone_num(drone_id)
 
@@ -157,7 +157,7 @@ class PayloadInjector:
 
 def main():
     rospy.init_node("payload_injector", anonymous=False)
-    drone_id = rospy.get_param("~drone_id", "nexus0")
+    drone_id = rospy.get_param("~drone_id", "nexus1")
     PayloadInjector(drone_id)
     rospy.spin()
 

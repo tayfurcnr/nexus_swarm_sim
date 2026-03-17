@@ -15,7 +15,7 @@ from nexus_swarm_sim.msg import UwbRange
 
 
 class NeighborDiscovery:
-    def __init__(self, drone_id="nexus0", drone_prefix="nexus", topic_suffix="range"):
+    def __init__(self, drone_id="nexus1", drone_prefix="nexus", topic_suffix="range"):
         self.drone_id = drone_id
         self.drone_prefix = drone_prefix
         self.topic_suffix = topic_suffix
@@ -136,7 +136,7 @@ class NeighborDiscovery:
 
 def main():
     rospy.init_node("neighbor_discovery", anonymous=False)
-    drone_id = rospy.get_param("~drone_id", "nexus0")
+    drone_id = rospy.get_param("~drone_id", "nexus1")
     drone_prefix = rospy.get_param("~drone_prefix", "nexus")
     topic_suffix = rospy.get_param("~topic_suffix", "range")
 

@@ -38,7 +38,7 @@ def main():
     rospy.on_shutdown(terminate_children)
 
     for i in range(num_drones):
-        drone_id = f"{drone_prefix}{i}"
+        drone_id = f"{drone_prefix}{i + 1}"
         instance = i
         sys_id = i + 1
         x = float(i) * 2.0

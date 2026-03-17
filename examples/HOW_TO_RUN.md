@@ -35,11 +35,11 @@ Purpose:
 
 Run:
 ```bash
-rosrun nexus_swarm_sim neighbor_discovery_example.py _drone_id:=nexus0 _drone_prefix:=nexus
+rosrun nexus_swarm_sim neighbor_discovery_example.py _drone_id:=nexus1 _drone_prefix:=nexus
 ```
 
 Useful params:
-- `_drone_id:=nexus0`
+- `_drone_id:=nexus1`
 - `_drone_prefix:=nexus`
 - `_topic_suffix:=range`
 - `_max_range_m:=50.0`
@@ -57,7 +57,7 @@ Purpose:
 
 Run:
 ```bash
-rosrun nexus_swarm_sim signal_processor_example.py _drone_id:=nexus0 _drone_prefix:=nexus
+rosrun nexus_swarm_sim signal_processor_example.py _drone_id:=nexus1 _drone_prefix:=nexus
 ```
 
 Published topics:
@@ -65,7 +65,7 @@ Published topics:
 - `/<drone_id>/uwb/processed_measurement`
 
 Useful params:
-- `_drone_id:=nexus0`
+- `_drone_id:=nexus1`
 - `_drone_prefix:=nexus`
 - `_enable_filtering:=true`
 - `_filter_window:=5`
@@ -82,7 +82,7 @@ Purpose:
 
 Run:
 ```bash
-rosrun nexus_swarm_sim payload_injector_example.py _drone_id:=nexus0
+rosrun nexus_swarm_sim payload_injector_example.py _drone_id:=nexus1
 ```
 
 Published topic:
@@ -120,7 +120,7 @@ roslaunch nexus_swarm_sim full_swarm.launch num_drones:=3 vehicle_model:=iris dr
 
 Terminal 2:
 ```bash
-rosrun nexus_swarm_sim payload_injector_example.py _drone_id:=nexus0
+rosrun nexus_swarm_sim payload_injector_example.py _drone_id:=nexus1
 ```
 
 Terminal 3:

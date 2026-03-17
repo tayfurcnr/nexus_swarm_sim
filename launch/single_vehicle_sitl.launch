@@ -4,7 +4,7 @@
     <arg name="headless" default="false" />
     <arg name="use_sim_time" default="true" />
     <arg name="drone_prefix" default="nexus" />
-    <arg name="drone_id" default="$(eval arg('drone_prefix') + '0')" />
+    <arg name="drone_id" default="$(eval arg('drone_prefix') + '1')" />
     <arg name="model_prefix" default="iris_demo" />
     <arg name="scenario_config" default="$(find nexus_swarm_sim)/config/uwb_simulator.yaml" />
     <arg name="ardupilot_root" default="$(env HOME)/ardupilot" />

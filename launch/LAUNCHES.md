@@ -90,7 +90,7 @@ If you do not override arguments:
 - `num_drones:=3`
 
 This produces vehicles like:
-- `nexus0`
+- `nexus1`
 - `nexus1`
 - `nexus2`
 

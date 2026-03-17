@@ -16,7 +16,7 @@ SPEED_OF_LIGHT = 299792458.0
 
 
 class RawSignalProcessor:
-    def __init__(self, drone_id="nexus0", drone_prefix="nexus", enable_filtering=True, filter_window=5):
+    def __init__(self, drone_id="nexus1", drone_prefix="nexus", enable_filtering=True, filter_window=5):
         self.drone_id = drone_id
         self.drone_prefix = drone_prefix
         self.enable_filtering = enable_filtering
@@ -175,7 +175,7 @@ class RawSignalProcessor:
 def main():
     rospy.init_node("signal_processor", anonymous=False)
 
-    drone_id = rospy.get_param("~drone_id", "nexus0")
+    drone_id = rospy.get_param("~drone_id", "nexus1")
     drone_prefix = rospy.get_param("~drone_prefix", "nexus")
     enable_filtering = rospy.get_param("~enable_filtering", True)
     filter_window = rospy.get_param("~filter_window", 5)

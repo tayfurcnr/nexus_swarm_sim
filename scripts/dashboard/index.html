@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Nexus Swarm Dashboard</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="/assets/dashboard.css" />
+</head>
+<body>
+  <div class="page">
+    <header class="topbar">
+      <section class="hero selected-hero">
+        <div id="selectedSummary">
+          <p class="eyebrow">Nexus Swarm Sim</p>
+          <h1>Mission Control</h1>
+          <p class="sub">Select a vehicle on the map or from the roster.</p>
+        </div>
+      </section>
+    </header>
+
+    <main class="shell">
+      <section class="stack left-stack">
+        <article class="panel neighbors-card">
+          <div class="panel-header">
+            <p class="section-title">Neighbor Links</p>
+          </div>
+          <div class="detail-body" id="neighborList">
+            <div class="muted">Select a vehicle on the map or from the roster.</div>
+          </div>
+        </article>
+      </section>
+
+      <section class="panel map-panel">
+        <div class="panel-header">
+          <p class="section-title">Tactical Map</p>
+        </div>
+        <div id="mapWrap">
+          <div id="leafletMap"></div>
+        </div>
+        <div class="map-footer">
+          <span id="statusText">Waiting for swarm data...</span>
+          <span id="clockText">Last refresh: --</span>
+        </div>
+      </section>
+
+      <section class="stack right-stack">
+        <article class="panel vehicles-card">
+          <div class="panel-header">
+            <p class="section-title">Vehicle List</p>
+          </div>
+          <div id="vehicleList"></div>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script type="module" src="/assets/dashboard/main.js"></script>
+</body>
+</html>
