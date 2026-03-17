@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import time
+import traceback
 
 try:
     from dashboard.app import ROS_IMPORTS_AVAILABLE, SwarmDashboard, rospy
@@ -22,12 +23,17 @@ def main():
     if demo_mode:
         if auto_demo and not args.demo:
             print("[SwarmDashboard] ROS modules not found. Starting in demo mode.", flush=True)
-        dashboard = SwarmDashboard(
-            demo_mode=True,
-            host=args.host,
-            port=args.port,
-            drone_prefix=args.drone_prefix,
-        )
+        try:
+            dashboard = SwarmDashboard(
+                demo_mode=True,
+                host=args.host,
+                port=args.port,
+                drone_prefix=args.drone_prefix,
+            )
+        except Exception as exc:
+            print(f"[SwarmDashboard] Startup failed: {exc}", flush=True)
+            traceback.print_exc()
+            return 1
         try:
             while True:
                 time.sleep(1.0)
@@ -36,10 +42,15 @@ def main():
         return
 
     rospy.init_node("swarm_dashboard", anonymous=False)
-    SwarmDashboard(
-        demo_mode=False,
-        host=args.host,
-        port=args.port,
-        drone_prefix=args.drone_prefix,
-    )
+    try:
+        SwarmDashboard(
+            demo_mode=False,
+            host=args.host,
+            port=args.port,
+            drone_prefix=args.drone_prefix,
+        )
+    except Exception as exc:
+        rospy.logfatal("[SwarmDashboard] Startup failed: %s", exc)
+        traceback.print_exc()
+        return 1
     rospy.spin()

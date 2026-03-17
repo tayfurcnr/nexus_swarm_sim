@@ -8,7 +8,7 @@
     <arg name="scenario_config" default="$(find nexus_swarm_sim)/config/uwb_simulator.yaml" />
     <arg name="world_name" default="$(find nexus_swarm_sim)/worlds/swarm_uwb.world" />
     <arg name="ardupilot_gazebo_root" default="$(env HOME)/ardupilot_gazebo" />
-    <arg name="dashboard" default="$(arg headless)" />
+    <arg name="dashboard" default="false" />
     <arg name="dashboard_host" default="0.0.0.0" />
     <arg name="dashboard_port" default="8787" />
 

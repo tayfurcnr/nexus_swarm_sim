@@ -27,7 +27,13 @@ except ImportError:
 
 
 def resolve_host_ip():
-    udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    except OSError:
+        try:
+            return socket.gethostbyname(socket.gethostname())
+        except OSError:
+            return "127.0.0.1"
     try:
         udp_socket.connect(("8.8.8.8", 80))
         return udp_socket.getsockname()[0]
