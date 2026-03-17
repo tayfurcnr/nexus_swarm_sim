@@ -11,5 +11,5 @@
         pkg="gazebo_ros"
         type="spawn_model"
         output="screen"
-        args="-sdf -file $(find swarm_gazebo_sim)/models/sdf/uwb_dummy.sdf -model $(arg drone_id) -x $(arg x) -y $(arg y) -z $(arg z)"/>
+        args="-sdf -file $(find nexus_swarm_sim)/models/sdf/uwb_dummy.sdf -model $(arg drone_id) -x $(arg x) -y $(arg y) -z $(arg z)"/>
 </launch>

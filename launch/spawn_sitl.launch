@@ -14,10 +14,10 @@
     <arg name="sitl_tcp_port" default="$(eval str(5760 + int(arg('instance')) * 10))" />
     <arg name="fdm_port_in" default="$(eval str(9002 + int(arg('instance')) * 10))" />
     <arg name="fdm_port_out" default="$(eval str(9003 + int(arg('instance')) * 10))" />
-    <arg name="rendered_model_file" default="$(eval '/tmp/swarm_gazebo_sim/' + arg('drone_id') + '_ardupilot.sdf')" />
+    <arg name="rendered_model_file" default="$(eval '/tmp/nexus_swarm_sim/' + arg('drone_id') + '_ardupilot.sdf')" />
 
     <group ns="$(arg drone_id)">
-        <node name="model_spawner" pkg="swarm_gazebo_sim" type="spawn_ardupilot_model.py" output="screen">
+        <node name="model_spawner" pkg="nexus_swarm_sim" type="spawn_ardupilot_model.py" output="screen">
             <param name="template_path" value="$(arg ardupilot_gazebo_root)/models/iris_with_ardupilot/model.sdf" />
             <param name="output_path" value="$(arg rendered_model_file)" />
             <param name="model_name" value="$(arg drone_id)" />
@@ -28,7 +28,7 @@
             <param name="z" value="$(arg z)" />
         </node>
 
-        <node name="sitl_session_launcher" pkg="swarm_gazebo_sim" type="start_sitl_session.py" output="screen">
+        <node name="sitl_session_launcher" pkg="nexus_swarm_sim" type="start_sitl_session.py" output="screen">
             <param name="ardupilot_root" value="$(arg ardupilot_root)" />
             <param name="ardupilot_gazebo_root" value="$(arg ardupilot_gazebo_root)" />
             <param name="vehicle" value="ArduCopter" />
@@ -46,7 +46,7 @@
             <arg name="respawn_mavros" value="true" />
         </include>
 
-        <node name="stream_rate_configurator" pkg="swarm_gazebo_sim" type="configure_stream_rates.py" output="screen">
+        <node name="stream_rate_configurator" pkg="nexus_swarm_sim" type="configure_stream_rates.py" output="screen">
             <param name="state_topic" value="mavros/state" />
             <param name="service_name" value="mavros/set_stream_rate" />
             <param name="stream_id" value="0" />

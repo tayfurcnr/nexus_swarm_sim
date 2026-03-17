@@ -1,140 +1,534 @@
 # Swarm Gazebo Simulation
 
+![ROS Noetic](https://img.shields.io/badge/ROS-Noetic-blue)
+![Gazebo](https://img.shields.io/badge/Gazebo-11-orange)
+![ArduPilot](https://img.shields.io/badge/ArduPilot-SITL-green)
+![License](https://img.shields.io/badge/license-MIT-lightgrey)
+
+![Nexus Swarm Sim Logo](docs/logo.png)
+
+A modular multi-UAV simulation framework for swarm autonomy research, combining Gazebo, ArduPilot SITL, MAVROS, and UWB-based inter-vehicle sensing.
+
+> Package name: `nexus_swarm_sim`
+
+## Table Of Contents
+
+- [Overview](#overview)
+- [Why This Project Exists](#why-this-project-exists)
+- [Highlights](#highlights)
+- [Architecture](#architecture)
+- [Quick Start](#quick-start)
+- [Requirements](#requirements)
+- [Installation And Setup](#installation-and-setup)
+  - [Setup Paths](#setup-paths)
+  - [If ArduPilot Is Already Installed](#if-ardupilot-is-already-installed)
+  - [If ArduPilot Is Not Installed Yet](#if-ardupilot-is-not-installed-yet)
+  - [If You Do Not Need ArduPilot](#if-you-do-not-need-ardupilot)
+  - [Environment Expectations](#environment-expectations)
+  - [Troubleshooting Full Swarm Bringup](#troubleshooting-full-swarm-bringup)
+- [Build](#build)
+- [Launch Modes](#launch-modes)
+- [Runtime Data Flow](#runtime-data-flow)
+- [Namespaces](#namespaces)
+- [Operational Checks](#operational-checks)
+- [Topic Layout](#topic-layout)
+- [UWB Simulation Behavior](#uwb-simulation-behavior)
+- [Use Cases](#use-cases)
+- [Configuration](#configuration)
+- [Developing Against The Package](#developing-against-the-package)
+- [Additional Documentation](#additional-documentation)
+- [Notes](#notes)
+
 ## Overview
-This package now serves two roles:
-- multi-vehicle Gazebo + ArduPilot + MAVROS bringup
-- optional UWB ranging simulation on top of that swarm
 
-The UWB layer provides realistic, dynamic DW3000-like range measurements. Drones are discovered at runtime from `/gazebo/model_states`, and links are created automatically as vehicles appear.
+`nexus_swarm_sim` provides two connected capabilities:
 
-The package name is `swarm_gazebo_sim`.
+- full multi-vehicle simulation bringup using Gazebo, ArduPilot SITL, and MAVROS
+- an optional UWB layer that publishes simulated inter-vehicle ranging data
 
-## Dynamic Discovery
-The system is built for scalability. You don't need to configure model names or static ranging pairs.
-*   **Automatic Detection**: Simulator listens to `/gazebo/model_states` and detects any model starting with a configurable prefix (default: `nexus`).
-*   **Runtime Link Creation**: As soon as a new drone is detected, the simulator creates UWB publishers for it and initiates ranging links with all existing drones in the swarm.
+The system is built around dynamic discovery. Vehicles are detected from `/gazebo/model_states`, and UWB links are created automatically as matching models appear.
 
-## Features & Behavior
-The simulation publishes per-drone UWB data on `/<drone_id>/uwb/range`. 
-*   **Dropout**: Probability increases with distance (approx. 40% at 100m).
-*   **Latency**: Measurements have ~5ms delay with jitter to mimic real hardware processing.
-*   **Outliers**: 1-3% of measurements have random bias (simulating multipath).
-*   **LOS/NLOS Detection (Probabilistic)**:
-    *   **LOS (Line-of-Sight)**: Normal noise baseline.
-    *   **NLOS (Non-Line-of-Sight)**: +15cm bias, increased uncertainty. P(NLOS) grows with distance and altitude difference.
-*   **Update Rate**: Each drone pair is throttled independently to `update_rate_hz` (default: 15Hz).
+## Why This Project Exists
 
-## Topic Architecture
+Swarm autonomy research requires tightly integrated simulation of:
 
-Each discovered drone publishes its own data:
+- vehicle dynamics
+- communication middleware
+- inter-agent sensing
 
-| Topic | Message Type | Description |
-|---|---|---|
-| `/<drone_id>/uwb/range` | `UwbRange` | Processed ranges (distances, LOS, etc.) |
-| `/<drone_id>/uwb/raw_signal` | `RawUWBSignal` | Raw ToA/SNR/RSSI from the drone |
-
-MAVROS stays namespaced per vehicle, for example:
-- `/<drone_id>/mavros/state`
-- `/<drone_id>/mavros/local_position/pose`
-
-## Run Modes
-
-Primary integration mode:
-- `full_swarm.launch` is the main end-to-end mode.
-- It starts Gazebo, ArduPilot SITL, MAVROS, and the UWB simulator for multiple vehicles.
-- Use this for real swarm testing.
-
-Debug-only fallback:
-- `uwb_only.launch` is only for smoke testing the UWB simulator without ArduPilot.
-- It does not validate the full flight stack or MAVROS integration.
-
-Recommended non-SITL mode:
-- `models_only.launch` gives you real Gazebo drone models and working UWB simulation without ArduPilot.
-- Use this when you want visual simulation but do not need the flight stack.
-
-Incremental ArduPilot validation mode:
-- `single_vehicle_sitl.launch` is the one-vehicle debugging entry point.
-- It uses the local `~/ardupilot_gazebo` world/model/plugin setup and starts `sim_vehicle.py` plus MAVROS for one vehicle.
-- Use this when you want to isolate SITL issues before scaling to a swarm.
+This project provides all three in a single reproducible stack.
 
 ## Quick Start
 
-### 1. Build
+### Full Swarm (recommended)
+
 ```bash
+mkdir -p ~/swarm_uwb_sim_ws/src
+cd ~/swarm_uwb_sim_ws/src
+
+git clone https://github.com/tayfurcnr/nexus_swarm_sim.git
+cd nexus_swarm_sim
+
+bash setup_ardupilot_noetic.sh
+
+source ~/swarm_uwb_sim_ws/devel/setup.bash
+
+roslaunch nexus_swarm_sim full_swarm.launch num_drones:=3
+```
+
+### Fast Non-SITL Start
+
+```bash
+mkdir -p ~/catkin_ws/src
+cd ~/catkin_ws/src
+git clone https://github.com/tayfurcnr/nexus_swarm_sim.git
+cd ~/catkin_ws
+
+python3 -m pip install -r src/nexus_swarm_sim/requirements.txt
+catkin_make
+source devel/setup.bash
+
+roslaunch nexus_swarm_sim models_only.launch num_drones:=3
+```
+
+## Highlights
+
+- Multi-vehicle Gazebo bringup with configurable swarm size
+- Per-vehicle MAVROS namespaces
+- ArduPilot SITL integration
+- Optional UWB range and raw-signal simulation
+- Headless and GUI launch support
+- Lightweight non-SITL and UWB-only modes for testing
+
+## Architecture
+
+The package is organized around two layers.
+
+### Simulation Bringup
+
+- Gazebo world loading
+- vehicle spawning
+- ArduPilot SITL processes
+- MAVROS connectivity
+
+### UWB Simulation
+
+- dynamic vehicle discovery from `/gazebo/model_states`
+- per-vehicle UWB publishers
+- probabilistic LOS/NLOS behavior
+- latency, dropout, and outlier modeling
+
+Default runtime naming:
+
+| Parameter | Default |
+|---|---|
+| `vehicle_model` | `iris` |
+| `drone_prefix` | `nexus` |
+| Generated names | `nexus0`, `nexus1`, `nexus2`, ... |
+
+Runtime sketch:
+
+```text
+ArduPilot SITL -> MAVROS -> ROS topics -> swarm logic
+                  ^
+                  |
+Gazebo -> /gazebo/model_states -> UWB Simulator -> /<drone_id>/uwb/*
+```
+
+Mermaid view:
+
+```mermaid
+graph TD
+
+A[Gazebo] --> B[/gazebo/model_states/]
+B --> C[UWB Simulator]
+
+D[ArduPilot SITL] --> E[MAVROS]
+E --> F[ROS Topics]
+
+C --> F
+
+F --> G[Swarm Algorithms]
+```
+
+## Requirements
+
+| Component | Status For `full_swarm.launch` |
+|---|---|
+| Ubuntu 20.04 | Required |
+| ROS Noetic | Required |
+| Gazebo 11 Classic | Required |
+| MAVROS | Required |
+| ArduPilot SITL | Required |
+| `ardupilot_gazebo` | Required |
+| Python packages from `requirements.txt` | Required |
+
+For a full local setup flow, see [setup_ardupilot_noetic.sh](setup_ardupilot_noetic.sh).
+
+## Installation And Setup
+
+### Setup Paths
+
+There are three practical ways to use this repository.
+
+| Situation | Recommended Path | Recommended Launch |
+|---|---|---|
+| You already have ArduPilot and `ardupilot_gazebo` | Build this package and run full stack | `full_swarm.launch` |
+| You do not have ArduPilot dependencies yet | Run setup script first | `full_swarm.launch` after setup |
+| You do not want ArduPilot | Use simplified modes | `models_only.launch` or `uwb_only.launch` |
+
+Expected workspaces:
+
+- setup script default workspace: `~/swarm_uwb_sim_ws/src/nexus_swarm_sim`
+- manual catkin workspace example: `~/catkin_ws/src/nexus_swarm_sim`
+
+### If ArduPilot Is Already Installed
+
+Use this path if these directories already exist:
+
+- `~/ardupilot`
+- `~/ardupilot_gazebo`
+
+Basic checks:
+
+```bash
+ls ~/ardupilot
+ls ~/ardupilot_gazebo
+ls ~/ardupilot/Tools/autotest/sim_vehicle.py
+rospack find mavros
+```
+
+If `ls ~/ardupilot_gazebo` fails, do not use `full_swarm.launch` yet.
+Use one of the following instead:
+
+- install the missing dependency stack with `bash setup_ardupilot_noetic.sh`
+- use `models_only.launch` until ArduPilot dependencies are ready
+- use `uwb_only.launch` for minimal UWB-only testing
+
+Expected state:
+
+- ArduPilot SITL is built
+- `ardupilot_gazebo` is built
+- MAVROS is installed
+
+Then build this package in your catkin workspace:
+
+```bash
+python3 -m pip install -r requirements.txt
 catkin_make
 source devel/setup.bash
 ```
 
-### 2. Launch
-Main full-stack launch:
+Recommended main launch:
+
 ```bash
-roslaunch swarm_gazebo_sim full_swarm.launch gui:=true headless:=false num_drones:=3 drone_prefix:=nexus
+roslaunch nexus_swarm_sim full_swarm.launch
 ```
 
-Headless test run:
+### If ArduPilot Is Not Installed Yet
+
+Use the setup script:
+
 ```bash
-roslaunch swarm_gazebo_sim full_swarm.launch gui:=false headless:=true num_drones:=2 drone_prefix:=nexus
+bash setup_ardupilot_noetic.sh
 ```
 
-Non-SITL Gazebo-only mode:
+The script prepares:
+
+- ROS Noetic dependencies
+- MAVROS
+- Python packages from `requirements.txt`
+- GeographicLib datasets
+- ArduPilot source and SITL build
+- `ardupilot_gazebo`
+- a catkin workspace for this package
+
+After it finishes, make sure ArduPilot tools are available on your shell `PATH`:
+
 ```bash
-roslaunch swarm_gazebo_sim models_only.launch gui:=true headless:=false num_drones:=3 drone_prefix:=nexus
+echo 'export PATH=$PATH:$HOME/ardupilot/Tools/autotest' >> ~/.bashrc
+echo 'export PATH=$PATH:$HOME/ardupilot/Tools' >> ~/.bashrc
+source ~/.bashrc
 ```
 
-UWB-only smoke test:
+`requirements.txt` in this repository contains only direct `pip` dependencies used by the repository's Python code.
+
+Then source the generated workspace:
+
 ```bash
-roslaunch swarm_gazebo_sim uwb_only.launch num_drones:=3 drone_prefix:=nexus
+cd ~/swarm_uwb_sim_ws
+source devel/setup.bash
 ```
 
-Single-vehicle SITL validation:
+### If You Do Not Need ArduPilot
+
+If you only want Gazebo visuals or UWB behavior, you do not need the full flight stack.
+
+Use:
+
+- `models_only.launch` for real Gazebo models without SITL
+- `uwb_only.launch` for a minimal UWB smoke test
+
+Examples:
+
 ```bash
-roslaunch swarm_gazebo_sim single_vehicle_sitl.launch
+roslaunch nexus_swarm_sim models_only.launch gui:=true headless:=false num_drones:=3 drone_prefix:=nexus
 ```
 
-### 3. Monitor
-The included monitor tool lists detected drones and their current links:
 ```bash
-rosrun swarm_gazebo_sim swarm_uwb_monitor.py
+roslaunch nexus_swarm_sim uwb_only.launch num_drones:=3 drone_prefix:=nexus
 ```
 
-Useful quick checks:
+### Environment Expectations
+
+`full_swarm.launch` assumes:
+
+- `~/ardupilot` exists
+- `~/ardupilot_gazebo` exists
+- `sim_vehicle.py` is available from the ArduPilot tree
+- MAVROS is installed
+
+If these are not true, use `models_only.launch` or `uwb_only.launch` until the full stack is ready.
+
+### Troubleshooting Full Swarm Bringup
+
+Check these first:
+
+```bash
+ls ~/ardupilot/Tools/autotest/sim_vehicle.py
+ls ~/ardupilot_gazebo
+rospack find mavros
+```
+
+If `ls ~/ardupilot_gazebo` returns `No such file or directory`, the `ardupilot_gazebo` dependency is missing. In that case:
+
+- run `bash setup_ardupilot_noetic.sh`, or
+- install `ardupilot_gazebo` manually, or
+- stay on `models_only.launch` / `uwb_only.launch` until the dependency is available
+
+Then confirm your environment is sourced:
+
+```bash
+source /opt/ros/noetic/setup.bash
+source devel/setup.bash
+```
+
+If you need to isolate SITL problems, start with:
+
+```bash
+roslaunch nexus_swarm_sim single_vehicle_sitl.launch
+```
+
+## Build
+
+Inside your catkin workspace:
+
+```bash
+python3 -m pip install -r requirements.txt
+catkin_make
+source devel/setup.bash
+```
+
+## Launch Modes
+
+### `full_swarm.launch`
+
+Main end-to-end launch.
+
+Starts:
+
+- Gazebo
+- multiple ArduPilot SITL instances
+- MAVROS per vehicle
+- `/uwb_simulator`
+
+Example:
+
+```bash
+roslaunch nexus_swarm_sim full_swarm.launch gui:=true headless:=false num_drones:=3 drone_prefix:=nexus
+```
+
+Headless example:
+
+```bash
+roslaunch nexus_swarm_sim full_swarm.launch gui:=false headless:=true num_drones:=2 drone_prefix:=nexus
+```
+
+### `single_vehicle_sitl.launch`
+
+Single-vehicle ArduPilot validation mode.
+
+```bash
+roslaunch nexus_swarm_sim single_vehicle_sitl.launch
+```
+
+### `models_only.launch`
+
+Gazebo-only visual simulation with real drone models, without ArduPilot SITL.
+
+```bash
+roslaunch nexus_swarm_sim models_only.launch gui:=true headless:=false num_drones:=3 drone_prefix:=nexus
+```
+
+### `uwb_only.launch`
+
+Minimal smoke-test mode with dummy models and only the UWB side enabled.
+
+```bash
+roslaunch nexus_swarm_sim uwb_only.launch num_drones:=3 drone_prefix:=nexus
+```
+
+## What You Get After Launch
+
+- Multiple drones spawned in Gazebo
+- Independent MAVROS instances per drone
+- Live UWB range topics between drones
+- Fully namespaced swarm-ready ROS graph
+
+## Runtime Data Flow
+
+Core runtime flow:
+
+```text
+ArduPilot SITL -> MAVROS -> ROS topics -> UWB Simulator / swarm consumers
+```
+
+Per vehicle:
+
+```text
+SITL instance -> MAVROS node -> namespace (/nexusX)
+```
+
+Gazebo contribution:
+
+```text
+Gazebo -> /gazebo/model_states -> UWB Simulator -> /<drone_id>/uwb/*
+```
+
+## Namespaces
+
+Each drone runs in its own namespace. This is critical for any multi-vehicle workflow.
+
+Examples:
+
+- `/nexus0/`
+- `/nexus1/`
+- `/nexus2/`
+
+Typical per-vehicle topics:
+
+- `/nexus0/mavros/state`
+- `/nexus0/mavros/local_position/pose`
+- `/nexus0/uwb/range`
+- `/nexus0/uwb/raw_signal`
+
+## Operational Checks
+
+Monitor tool:
+
+```bash
+rosrun nexus_swarm_sim swarm_uwb_monitor.py
+```
+
+Useful commands:
+
 ```bash
 rostopic echo /nexus0/mavros/state
 rostopic echo /nexus0/uwb/range
 rostopic list | grep /uwb/
+rosnode list
 ```
 
-## Developing: Adding a New Node
-To use this data in your cooperative localization algorithm, subscribe to the `/<drone_id>/uwb/range` topics.
+## Topic Layout
 
-**Python Example:**
+### MAVROS Topics
+
+Each vehicle uses its own namespace:
+
+- `/<drone_id>/mavros/state`
+- `/<drone_id>/mavros/local_position/pose`
+- `/<drone_id>/mavros/global_position/global`
+
+### UWB Topics
+
+Each discovered vehicle publishes:
+
+| Topic | Message Type | Description |
+|---|---|---|
+| `/<drone_id>/uwb/range` | `UwbRange` | Processed UWB distance estimates |
+| `/<drone_id>/uwb/raw_signal` | `RawUWBSignal` | Raw signal-level UWB simulation output |
+
+## UWB Simulation Behavior
+
+The UWB layer includes:
+
+- dynamic link creation
+- distance-dependent dropout
+- latency with jitter
+- random outliers
+- probabilistic LOS/NLOS behavior
+- per-pair throttling using `update_rate_hz`
+
+The simulator models DW3000-like behavior and publishes per-vehicle topics using the active drone namespace.
+
+## Use Cases
+
+This package is suitable for:
+
+- relative localization
+- swarm formation control
+- multi-agent SLAM
+- GPS-denied environment experiments
+- inter-vehicle sensing research
+
+## Configuration
+
+Main simulator parameters live in [config/uwb_simulator.yaml](config/uwb_simulator.yaml).
+
+Important simulator parameters:
+
+- `drone_prefix`
+- `model_prefix`
+- `vehicle_model`
+- `update_rate_hz`
+- `pub_topic_prefix`
+- `max_twr_freq`
+- dropout, outlier, and NLOS tuning parameters
+
+Common launch arguments:
+
+- `num_drones`
+- `drone_prefix`
+- `vehicle_model`
+- `gui`
+- `headless`
+
+## Developing Against The Package
+
+If you want to consume UWB data in another ROS node, subscribe to `/<drone_id>/uwb/range`.
+
 ```python
 import rospy
-from swarm_gazebo_sim.msg import UwbRange
+from nexus_swarm_sim.msg import UwbRange
+
 
 def range_callback(msg):
-    # msg.src_id = source drone ID (e.g., "drone0")
-    # msg.dst_id = destination drone ID (e.g., "drone1")
-    # msg.distance_3d = measured distance with realistic noise
-    # msg.los = Line-of-Sight flag
-    rospy.loginfo(f"Link: {msg.src_id} -> {msg.dst_id}: {msg.distance_3d:.3f}m")
+    rospy.loginfo(
+        f"Link {msg.src_id} -> {msg.dst_id}: {msg.distance_3d:.3f} m (los={msg.los})"
+    )
 
-rospy.init_node('my_localization_node')
-# You can subscribe to all drones dynamically or specific ones
-rospy.Subscriber('/<drone_id>/uwb/range', UwbRange, range_callback)
+
+rospy.init_node("my_localization_node")
+rospy.Subscriber("/nexus0/uwb/range", UwbRange, range_callback)
 rospy.spin()
 ```
 
-## Configuration
-Tune simulation parameters (prefix, dropout, noise, etc.) in [config/uwb_simulator.yaml](/home/tayfurcnr/Desktop/Projects/swarm_uwb_sim/config/uwb_simulator.yaml).
-Key parameters:
-- `drone_prefix`
-- `model_prefix`
-- `update_rate_hz`
-- `pub_topic_prefix`
+## Additional Documentation
 
-For scenario launches, the generic knobs are:
-- `vehicle_model`: underlying Gazebo/SITL vehicle model, currently `iris`
-- `drone_prefix`: spawned namespace/model prefix such as `nexus`, `drone`, `quad`
-- `num_drones`: number of vehicles to spawn
-- `gui` / `headless`: Gazebo visualization mode
+- [launch/LAUNCHES.md](launch/LAUNCHES.md)
+- [examples/HOW_TO_RUN.md](examples/HOW_TO_RUN.md)
+
+## Notes
+
+- Gazebo Classic and related ROS packages are deprecated upstream, but this project still targets ROS Noetic + Gazebo 11 because that is the current environment.
+- Use `headless:=true` for clean automated or lightweight runtime checks.

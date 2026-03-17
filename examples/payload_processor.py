@@ -7,7 +7,7 @@ import struct
 
 import rospy
 from gazebo_msgs.msg import ModelStates
-from swarm_gazebo_sim.msg import UwbRange
+from nexus_swarm_sim.msg import UwbRange
 
 
 class UWBPayloadCodec:

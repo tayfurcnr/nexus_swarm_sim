@@ -6,7 +6,7 @@
     <arg name="drone_prefix" default="nexus" />
     <arg name="drone_id" default="$(eval arg('drone_prefix') + '0')" />
     <arg name="model_prefix" default="iris_demo" />
-    <arg name="scenario_config" default="$(find swarm_gazebo_sim)/config/uwb_simulator.yaml" />
+    <arg name="scenario_config" default="$(find nexus_swarm_sim)/config/uwb_simulator.yaml" />
     <arg name="ardupilot_root" default="$(env HOME)/ardupilot" />
     <arg name="ardupilot_gazebo_root" default="$(env HOME)/ardupilot_gazebo" />
     <arg name="sitl_frame" default="gazebo-iris" />
@@ -16,7 +16,7 @@
     <arg name="sitl_tcp_port" default="5760" />
     <arg name="world_name" default="$(eval arg('ardupilot_gazebo_root') + '/worlds/iris_arducopter_runway.world')" />
 
-    <include file="$(find swarm_gazebo_sim)/launch/base.launch">
+    <include file="$(find nexus_swarm_sim)/launch/base.launch">
         <arg name="use_sim_time" value="$(arg use_sim_time)" />
         <arg name="gui" value="$(arg gui)" />
         <arg name="headless" value="$(arg headless)" />
@@ -26,7 +26,7 @@
         <arg name="world_name" value="$(arg world_name)" />
     </include>
 
-    <node name="sitl_session_launcher" pkg="swarm_gazebo_sim" type="start_sitl_session.py" output="screen">
+    <node name="sitl_session_launcher" pkg="nexus_swarm_sim" type="start_sitl_session.py" output="screen">
         <param name="ardupilot_root" value="$(arg ardupilot_root)" />
         <param name="ardupilot_gazebo_root" value="$(arg ardupilot_gazebo_root)" />
         <param name="vehicle" value="$(arg sitl_vehicle)" />
@@ -44,7 +44,7 @@
             <arg name="respawn_mavros" value="true" />
         </include>
 
-        <node name="stream_rate_configurator" pkg="swarm_gazebo_sim" type="configure_stream_rates.py" output="screen">
+        <node name="stream_rate_configurator" pkg="nexus_swarm_sim" type="configure_stream_rates.py" output="screen">
             <param name="state_topic" value="mavros/state" />
             <param name="service_name" value="mavros/set_stream_rate" />
             <param name="stream_id" value="0" />

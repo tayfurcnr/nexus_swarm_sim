@@ -25,8 +25,8 @@
 #include <gazebo_msgs/ModelStates.h>
 
 // Custom UWB messages
-#include <swarm_gazebo_sim/UwbRange.h>
-#include <swarm_gazebo_sim/RawUWBSignal.h>
+#include <nexus_swarm_sim/UwbRange.h>
+#include <nexus_swarm_sim/RawUWBSignal.h>
 
 /*
     Struct to store a range to be calculated

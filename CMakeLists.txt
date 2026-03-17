@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(swarm_gazebo_sim)
+project(nexus_swarm_sim)
 
 add_compile_options(-std=c++11)
 

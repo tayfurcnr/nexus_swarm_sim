@@ -11,7 +11,7 @@ This node:
 import rospy
 from collections import defaultdict
 from gazebo_msgs.msg import ModelStates
-from swarm_gazebo_sim.msg import UwbRange
+from nexus_swarm_sim.msg import UwbRange
 
 
 class NeighborDiscovery:

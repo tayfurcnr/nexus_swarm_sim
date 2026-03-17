@@ -23,7 +23,7 @@ from geometry_msgs.msg import PoseStamped
 from mavros_msgs.msg import State
 from gazebo_msgs.msg import ModelStates
 from std_msgs.msg import Float64, String
-from swarm_gazebo_sim.msg import UwbRange, RawUWBSignal
+from nexus_swarm_sim.msg import UwbRange, RawUWBSignal
 import time
 
 

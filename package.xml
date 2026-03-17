@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>swarm_gazebo_sim</name>
+  <name>nexus_swarm_sim</name>
   <version>0.0.0</version>
   <description>Multi-vehicle Gazebo and ArduPilot simulation platform with optional UWB ranging</description>
 

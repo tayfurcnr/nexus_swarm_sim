@@ -3,7 +3,7 @@
 This folder contains the ROS launch entry points for the project.
 
 Package name:
-- `swarm_gazebo_sim`
+- `nexus_swarm_sim`
 
 ## Main Launch Files
 
@@ -21,7 +21,7 @@ Package name:
 
 Example:
 ```bash
-roslaunch swarm_gazebo_sim uwb_only.launch num_drones:=3 drone_prefix:=nexus
+roslaunch nexus_swarm_sim uwb_only.launch num_drones:=3 drone_prefix:=nexus
 ```
 
 ### `models_only.launch`
@@ -32,7 +32,7 @@ roslaunch swarm_gazebo_sim uwb_only.launch num_drones:=3 drone_prefix:=nexus
 
 Example:
 ```bash
-roslaunch swarm_gazebo_sim models_only.launch gui:=true headless:=false num_drones:=3 drone_prefix:=nexus
+roslaunch nexus_swarm_sim models_only.launch gui:=true headless:=false num_drones:=3 drone_prefix:=nexus
 ```
 
 ### `single_vehicle_sitl.launch`
@@ -43,7 +43,7 @@ roslaunch swarm_gazebo_sim models_only.launch gui:=true headless:=false num_dron
 
 Example:
 ```bash
-roslaunch swarm_gazebo_sim single_vehicle_sitl.launch
+roslaunch nexus_swarm_sim single_vehicle_sitl.launch
 ```
 
 ### `full_swarm.launch`
@@ -53,7 +53,7 @@ roslaunch swarm_gazebo_sim single_vehicle_sitl.launch
 
 Example:
 ```bash
-roslaunch swarm_gazebo_sim full_swarm.launch num_drones:=3 vehicle_model:=iris drone_prefix:=nexus
+roslaunch nexus_swarm_sim full_swarm.launch num_drones:=3 vehicle_model:=iris drone_prefix:=nexus
 ```
 
 ## Spawn Launch Files

@@ -50,7 +50,7 @@ def main():
         if spawn_mode == "uwb_only":
             cmd = [
                 "roslaunch",
-                "swarm_gazebo_sim", "spawn_dummy.launch",
+                "nexus_swarm_sim", "spawn_dummy.launch",
                 f"drone_prefix:={drone_prefix}",
                 f"drone_id:={drone_id}",
                 f"x:={x}",
@@ -60,7 +60,7 @@ def main():
         elif spawn_mode == "gazebo_model":
             cmd = [
                 "roslaunch",
-                "swarm_gazebo_sim", "spawn_model.launch",
+                "nexus_swarm_sim", "spawn_model.launch",
                 f"drone_prefix:={drone_prefix}",
                 f"drone_id:={drone_id}",
                 f"model_file:={gazebo_model_file}",
@@ -71,7 +71,7 @@ def main():
         else:
             cmd = [
                 "roslaunch",
-                "swarm_gazebo_sim", "spawn_sitl.launch",
+                "nexus_swarm_sim", "spawn_sitl.launch",
                 f"vehicle_model:={vehicle_model}",
                 f"drone_prefix:={drone_prefix}",
                 f"drone_id:={drone_id}",

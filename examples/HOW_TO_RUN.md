@@ -8,17 +8,17 @@ Start one of the simulator modes first.
 
 Full integration mode:
 ```bash
-roslaunch swarm_gazebo_sim full_swarm.launch num_drones:=3 vehicle_model:=iris drone_prefix:=nexus
+roslaunch nexus_swarm_sim full_swarm.launch num_drones:=3 vehicle_model:=iris drone_prefix:=nexus
 ```
 
 Debug-only UWB mode:
 ```bash
-roslaunch swarm_gazebo_sim uwb_only.launch num_drones:=3 drone_prefix:=nexus
+roslaunch nexus_swarm_sim uwb_only.launch num_drones:=3 drone_prefix:=nexus
 ```
 
 Gazebo model mode without ArduPilot:
 ```bash
-roslaunch swarm_gazebo_sim models_only.launch gui:=true headless:=false num_drones:=3 drone_prefix:=nexus
+roslaunch nexus_swarm_sim models_only.launch gui:=true headless:=false num_drones:=3 drone_prefix:=nexus
 ```
 
 Notes:
@@ -35,7 +35,7 @@ Purpose:
 
 Run:
 ```bash
-rosrun swarm_gazebo_sim neighbor_discovery_example.py _drone_id:=nexus0 _drone_prefix:=nexus
+rosrun nexus_swarm_sim neighbor_discovery_example.py _drone_id:=nexus0 _drone_prefix:=nexus
 ```
 
 Useful params:
@@ -57,7 +57,7 @@ Purpose:
 
 Run:
 ```bash
-rosrun swarm_gazebo_sim signal_processor_example.py _drone_id:=nexus0 _drone_prefix:=nexus
+rosrun nexus_swarm_sim signal_processor_example.py _drone_id:=nexus0 _drone_prefix:=nexus
 ```
 
 Published topics:
@@ -82,7 +82,7 @@ Purpose:
 
 Run:
 ```bash
-rosrun swarm_gazebo_sim payload_injector_example.py _drone_id:=nexus0
+rosrun nexus_swarm_sim payload_injector_example.py _drone_id:=nexus0
 ```
 
 Published topic:
@@ -101,7 +101,7 @@ Purpose:
 
 Run:
 ```bash
-rosrun swarm_gazebo_sim payload_processor.py _drone_prefix:=nexus
+rosrun nexus_swarm_sim payload_processor.py _drone_prefix:=nexus
 ```
 
 Default input topic pattern:
@@ -115,20 +115,20 @@ Useful params:
 
 Terminal 1:
 ```bash
-roslaunch swarm_gazebo_sim full_swarm.launch num_drones:=3 vehicle_model:=iris drone_prefix:=nexus
+roslaunch nexus_swarm_sim full_swarm.launch num_drones:=3 vehicle_model:=iris drone_prefix:=nexus
 ```
 
 Terminal 2:
 ```bash
-rosrun swarm_gazebo_sim payload_injector_example.py _drone_id:=nexus0
+rosrun nexus_swarm_sim payload_injector_example.py _drone_id:=nexus0
 ```
 
 Terminal 3:
 ```bash
-rosrun swarm_gazebo_sim payload_processor.py _drone_prefix:=nexus
+rosrun nexus_swarm_sim payload_processor.py _drone_prefix:=nexus
 ```
 
 Terminal 4:
 ```bash
-rosrun swarm_gazebo_sim neighbor_discovery_example.py _drone_id:=nexus1 _drone_prefix:=nexus _topic_suffix:=range_with_payload
+rosrun nexus_swarm_sim neighbor_discovery_example.py _drone_id:=nexus1 _drone_prefix:=nexus _topic_suffix:=range_with_payload
 ```

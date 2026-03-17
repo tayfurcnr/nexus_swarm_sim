@@ -216,8 +216,8 @@ void UwbSimulator::check_for_new_models(const std::vector<std::string>& models)
         std::string range_topic = "/" + model + pub_topic_prefix_ + "/range";
         std::string raw_topic = "/" + model + pub_topic_prefix_ + "/raw_signal";
         
-        drone_tx_publishers_[model] = nh_.advertise<swarm_gazebo_sim::UwbRange>(range_topic, 100);
-        drone_raw_signal_publishers_[model] = nh_.advertise<swarm_gazebo_sim::RawUWBSignal>(raw_topic, 100);
+        drone_tx_publishers_[model] = nh_.advertise<nexus_swarm_sim::UwbRange>(range_topic, 100);
+        drone_raw_signal_publishers_[model] = nh_.advertise<nexus_swarm_sim::RawUWBSignal>(raw_topic, 100);
 
         ROS_INFO_STREAM("  --> Created publishers for " << model);
 
@@ -357,7 +357,7 @@ void UwbSimulator::publish_ranges(const ros::TimerEvent& event)
         }
 
         // Publish unified UwbRange message
-        swarm_gazebo_sim::UwbRange uwb_msg;
+        nexus_swarm_sim::UwbRange uwb_msg;
         uwb_msg.header.stamp = ros::Time::now();
         uwb_msg.header.frame_id = "map";
         uwb_msg.src_id = elem.first.ori_node;
@@ -389,7 +389,7 @@ void UwbSimulator::publish_ranges(const ros::TimerEvent& event)
         float rssi = 0.0f;
         generate_raw_signal(distance_3d, los, toa_ns, snr_db, rssi);
         
-        swarm_gazebo_sim::RawUWBSignal raw_msg;
+        nexus_swarm_sim::RawUWBSignal raw_msg;
         raw_msg.header.stamp = ros::Time::now();
         raw_msg.header.frame_id = "map";
         raw_msg.src_id = elem.first.ori_node;

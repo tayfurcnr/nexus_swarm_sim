@@ -10,7 +10,7 @@ import rospy
 from gazebo_msgs.msg import ModelStates
 from geometry_msgs.msg import Vector3Stamped
 from std_msgs.msg import Float32
-from swarm_gazebo_sim.msg import RawUWBSignal
+from nexus_swarm_sim.msg import RawUWBSignal
 
 SPEED_OF_LIGHT = 299792458.0
 

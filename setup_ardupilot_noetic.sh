@@ -5,8 +5,8 @@
 set -e
 
 WORKSPACE_DIR="${HOME}/swarm_uwb_sim_ws"
-REPO_URL="https://github.com/tayfurcnr/swarm_uwb_sim.git"
-REPO_DIR="${WORKSPACE_DIR}/src/swarm_gazebo_sim"
+REPO_URL="https://github.com/tayfurcnr/nexus_swarm_sim.git"
+REPO_DIR="${WORKSPACE_DIR}/src/nexus_swarm_sim"
 
 echo "=================================================="
 echo "Swarm Gazebo Simulation - ArduPilot Setup"
@@ -45,11 +45,7 @@ for pkg in "${PACKAGES[@]}"; do
     fi
 done
 
-echo -e "\n${YELLOW}[2/6] Python dependencies${NC}"
-sudo -H python3 -m pip install -q empy jinja2 packaging toml numpy jsonschema pymavlink
-echo -e "${GREEN}✓${NC} Python dependencies installed"
-
-echo -e "\n${YELLOW}[3/6] GeographicLib datasets${NC}"
+echo -e "\n${YELLOW}[2/6] GeographicLib datasets${NC}"
 if [ ! -f "/etc/profile.d/mavros_geod.sh" ]; then
     wget -q https://raw.githubusercontent.com/mavlink/mavros/master/mavros/scripts/install_geographiclib_datasets.sh -O /tmp/install_geographiclib.sh
     sudo bash /tmp/install_geographiclib.sh
@@ -58,17 +54,21 @@ else
     echo -e "${GREEN}✓${NC} GeographicLib datasets already installed"
 fi
 
-echo -e "\n${YELLOW}[4/6] Workspace setup${NC}"
+echo -e "\n${YELLOW}[3/6] Workspace setup${NC}"
 mkdir -p "${WORKSPACE_DIR}/src"
 cd "${WORKSPACE_DIR}"
 
-echo -e "\n${YELLOW}[5/6] Source repositories${NC}"
+echo -e "\n${YELLOW}[4/6] Source repositories${NC}"
 if [ ! -d "${REPO_DIR}" ]; then
-    echo -e "${YELLOW}→${NC} cloning swarm_gazebo_sim"
+    echo -e "${YELLOW}→${NC} cloning nexus_swarm_sim"
     git clone "${REPO_URL}" "${REPO_DIR}"
 else
-    echo -e "${GREEN}✓${NC} swarm_gazebo_sim already present"
+    echo -e "${GREEN}✓${NC} nexus_swarm_sim already present"
 fi
+
+echo -e "\n${YELLOW}[5/6] Python dependencies${NC}"
+sudo -H python3 -m pip install -q -r "${REPO_DIR}/requirements.txt"
+echo -e "${GREEN}✓${NC} Python dependencies installed"
 
 if [ ! -d "${WORKSPACE_DIR}/src/ardupilot" ]; then
     echo -e "${YELLOW}→${NC} cloning ArduPilot"
@@ -124,12 +124,12 @@ echo "   export PATH=\$PATH:${WORKSPACE_DIR}/src/ardupilot/Tools/autotest"
 echo "   export PATH=\$PATH:${WORKSPACE_DIR}/src/ardupilot/Tools"
 echo ""
 echo "3. Launch the full integration test:"
-echo "   roslaunch swarm_gazebo_sim full_swarm.launch num_drones:=3 vehicle_model:=iris drone_prefix:=nexus"
+echo "   roslaunch nexus_swarm_sim full_swarm.launch num_drones:=3 vehicle_model:=iris drone_prefix:=nexus"
 echo ""
 echo "   Note: uwb_only.launch is only for debug/smoke testing."
 echo ""
 echo "4. Monitor UWB topics from another terminal:"
-echo "   rosrun swarm_gazebo_sim swarm_uwb_monitor.py"
+echo "   rosrun nexus_swarm_sim swarm_uwb_monitor.py"
 echo ""
 echo -e "${YELLOW}Docs:${NC}"
 echo "- README.md"

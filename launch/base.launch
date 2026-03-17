@@ -5,8 +5,8 @@
     <arg name="headless" default="false" />
     <arg name="vehicle_model" default="iris" />
     <arg name="drone_prefix" default="nexus" />
-    <arg name="scenario_config" default="$(find swarm_gazebo_sim)/config/uwb_simulator.yaml" />
-    <arg name="world_name" default="$(find swarm_gazebo_sim)/worlds/swarm_uwb.world" />
+    <arg name="scenario_config" default="$(find nexus_swarm_sim)/config/uwb_simulator.yaml" />
+    <arg name="world_name" default="$(find nexus_swarm_sim)/worlds/swarm_uwb.world" />
     <arg name="ardupilot_gazebo_root" default="$(env HOME)/ardupilot_gazebo" />
 
     <env name="GAZEBO_MODEL_PATH" value="$(eval arg('ardupilot_gazebo_root') + '/models:' + optenv('GAZEBO_MODEL_PATH', ''))" />
@@ -25,7 +25,7 @@
     <param name="vehicle_model" value="$(arg vehicle_model)" />
     <param name="drone_prefix" value="$(arg drone_prefix)" />
 
-    <node name="uwb_simulator" pkg="swarm_gazebo_sim" type="uwb_simulator" respawn="false" output="screen">
+    <node name="uwb_simulator" pkg="nexus_swarm_sim" type="uwb_simulator" respawn="false" output="screen">
         <rosparam file="$(arg scenario_config)" command="load" />
         <param name="model_prefix" value="$(arg drone_prefix)" />
     </node>
