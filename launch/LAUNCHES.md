@@ -1,82 +1,141 @@
-# Launch Guide
+# Launch Reference
 
-This folder contains the ROS launch entry points for the project.
+![ROS Noetic](https://img.shields.io/badge/ROS-Noetic-blue)
+![Gazebo](https://img.shields.io/badge/Gazebo-11-orange)
+![ArduPilot](https://img.shields.io/badge/ArduPilot-SITL-green)
+![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
-Package name:
-- `nexus_swarm_sim`
+![Nexus Swarm Sim Logo](../docs/logo.png)
 
-## Main Launch Files
+This document describes the public ROS launch entry points shipped with `nexus_swarm_sim` and the role of each one.
+
+## Table Of Contents
+
+- [Launch Organization](#launch-organization)
+- [Public Launches](#public-launches)
+- [Helper Launches](#helper-launches)
+- [Default Behavior](#default-behavior)
+- [Recommended Usage Sequence](#recommended-usage-sequence)
+- [Selection Guidance](#selection-guidance)
+
+## Launch Organization
+
+Public entry points:
+- `base.launch`
+- `uwb_only.launch`
+- `models_only.launch`
+- `single_vehicle_sitl.launch`
+- `full_swarm.launch`
+
+Helper launches:
+- `spawn_dummy.launch`
+- `spawn_model.launch`
+- `spawn_sitl.launch`
+
+Helper launch files are typically started by [swarm_launcher.py](/home/tayfurcnr/swarm_ws/src/nexus_swarm_sim/scripts/swarm_launcher.py), not by hand.
+
+## Public Launches
 
 ### `base.launch`
-- Starts the shared simulation base.
-- Launches Gazebo with the selected world.
-- Launches the `/uwb_simulator` node.
-- Usually not called directly by hand.
+
+Purpose:
+- starts the shared simulation infrastructure
+- launches Gazebo with the selected world
+- starts the UWB simulator
+- optionally starts the dashboard
+
+Use this when:
+- you are composing a custom launch flow
+- you want the simulation base without directly spawning vehicles
 
 ### `uwb_only.launch`
-- Lightweight smoke-test mode.
-- Spawns simple dummy models.
-- Does not require ArduPilot or MAVROS.
-- Starts the 2D web dashboard on `http://localhost:8787` when `headless:=true` by default.
-- Use this when you only want to verify UWB simulation and topics.
+
+Purpose:
+- lightweight smoke-test mode
+- spawns simple dummy models from this repository
+- does not require ArduPilot or MAVROS
+
+Use this when:
+- you want to validate Gazebo and the UWB stack first
+- you want the fastest environment smoke test
 
 Example:
+
 ```bash
 roslaunch nexus_swarm_sim uwb_only.launch num_drones:=3 drone_prefix:=nexus
 ```
 
 ### `models_only.launch`
-- Visual/physics simulation mode with real Gazebo drone models.
-- Spawns Gazebo `iris_with_standoffs`-based models.
-- Does not require ArduPilot.
-- Starts the 2D web dashboard on `http://localhost:8787` when `headless:=true` by default.
-- Use this when you want to see realistic models in Gazebo while keeping the setup simpler than full SITL.
+
+Purpose:
+- visual and physics simulation mode with Gazebo vehicle models
+- no ArduPilot SITL
+- no MAVROS dependency
+
+Use this when:
+- you want realistic Gazebo visuals
+- you want multi-model testing without the full SITL chain
 
 Example:
+
 ```bash
 roslaunch nexus_swarm_sim models_only.launch gui:=true headless:=false num_drones:=3 drone_prefix:=nexus
 ```
 
 ### `single_vehicle_sitl.launch`
-- Single-vehicle ArduPilot integration mode.
-- Uses the local `~/ardupilot_gazebo` world and model with `libArduPilotPlugin.so`.
-- Starts `sim_vehicle.py` and MAVROS for one vehicle.
-- Starts the 2D web dashboard on `http://localhost:8787` when `headless:=true` by default.
-- This is the correct place to validate SITL integration before rebuilding any multi-vehicle workflow.
+
+Purpose:
+- single-vehicle ArduPilot validation mode
+- launches one Gazebo vehicle, one SITL instance, and one MAVROS bridge
+
+Use this when:
+- you want to validate `~/ardupilot` and `~/ardupilot_gazebo`
+- you want to verify the full stack on one vehicle before multi-vehicle bringup
 
 Example:
+
 ```bash
 roslaunch nexus_swarm_sim single_vehicle_sitl.launch
 ```
 
 ### `full_swarm.launch`
-- Full multi-vehicle ArduPilot mode.
-- Starts Gazebo, multiple SITL instances, MAVROS, and the `/uwb_simulator`.
-- Starts the 2D web dashboard on `http://localhost:8787` when `headless:=true` by default.
-- This is the main end-to-end swarm launch.
+
+Purpose:
+- full multi-vehicle ArduPilot mode
+- launches Gazebo, multiple SITL instances, MAVROS bridges, and the UWB simulator
+
+Use this when:
+- ArduPilot and `ardupilot_gazebo` are already installed
+- single-vehicle SITL bringup is already working
+- you want the main end-to-end swarm workflow
 
 Example:
+
 ```bash
 roslaunch nexus_swarm_sim full_swarm.launch num_drones:=3 vehicle_model:=iris drone_prefix:=nexus
 ```
 
-## Spawn Launch Files
-
-These are helper launch files. They are normally started by `scripts/swarm_launcher.py`, not manually.
+## Helper Launches
 
 ### `spawn_dummy.launch`
-- Spawns one dummy model.
-- Used by `uwb_only.launch`.
+- spawns one dummy vehicle model
+- used internally by `uwb_only.launch`
 
 ### `spawn_model.launch`
-- Spawns one Gazebo model from an SDF file.
-- Used by `models_only.launch`.
+- spawns one Gazebo model from an SDF file
+- used internally by `models_only.launch`
 
 ### `spawn_sitl.launch`
-- Starts one ArduPilot-backed drone instance with MAVROS.
-- Used by `full_swarm.launch`.
+- starts one ArduPilot-backed vehicle instance
+- used internally by `full_swarm.launch` and `single_vehicle_sitl.launch`
 
-## Practical Defaults
+## Default Behavior
+
+Common defaults:
+- `vehicle_model:=iris`
+- `drone_prefix:=nexus`
+- `num_drones:=3` for lightweight modes
+- `num_drones:=12` in `full_swarm.launch`
 
 Dashboard defaults:
 - `dashboard:=true` when `headless:=true`
@@ -84,19 +143,26 @@ Dashboard defaults:
 - `dashboard_host:=0.0.0.0`
 - `dashboard_port:=8787`
 
-If you do not override arguments:
-- `vehicle_model:=iris`
-- `drone_prefix:=nexus`
-- `num_drones:=3`
-
-This produces vehicles like:
-- `nexus1`
+Generated vehicle names follow the pattern:
 - `nexus1`
 - `nexus2`
+- `nexus3`
+- ...
 
-## Which One Should I Use?
+## Recommended Usage Sequence
 
-- If you only want to test UWB topics quickly: `uwb_only.launch`
-- If you want the practical main mode today without SITL: `models_only.launch`
-- If you want to validate ArduPilot integration the right way: `single_vehicle_sitl.launch`
-- If you want the complete multi-vehicle stack: `full_swarm.launch`
+For a new machine or a fresh setup:
+1. `uwb_only.launch`
+2. `models_only.launch`
+3. `single_vehicle_sitl.launch`
+4. `full_swarm.launch`
+
+## Selection Guidance
+
+Use `uwb_only.launch` for the fastest smoke test.
+
+Use `models_only.launch` when you want Gazebo visuals without ArduPilot.
+
+Use `single_vehicle_sitl.launch` when you want to validate the full integration path safely on one vehicle.
+
+Use `full_swarm.launch` when the full dependency stack is already installed and validated.
