@@ -197,6 +197,16 @@ h1 {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
+.dossier-card-actions {
+  background:
+    linear-gradient(180deg, rgba(30, 24, 17, 0.94), rgba(11, 18, 27, 0.92)),
+    radial-gradient(circle at top right, rgba(255, 122, 69, 0.1), transparent 35%);
+}
+
+.command-panel {
+  margin-top: 4px;
+}
+
 .dossier-card-identity {
   background:
     linear-gradient(180deg, rgba(16, 27, 40, 0.94), rgba(8, 15, 22, 0.9)),
@@ -286,6 +296,126 @@ h1 {
 .dossier-metric-gps strong {
   font-size: 0.98rem;
   line-height: 1.3;
+}
+
+.quick-actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.quick-btn {
+  appearance: none;
+  border: 1px solid rgba(126, 164, 194, 0.18);
+  border-radius: 16px;
+  background: rgba(126, 164, 194, 0.08);
+  color: var(--text);
+  padding: 12px 14px;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease, opacity 0.16s ease;
+}
+
+.quick-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(255, 122, 69, 0.34);
+  background: rgba(255, 122, 69, 0.12);
+}
+
+.quick-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.quick-btn-accent {
+  background: rgba(255, 122, 69, 0.14);
+  border-color: rgba(255, 122, 69, 0.3);
+}
+
+.quick-btn-warn {
+  background: rgba(255, 119, 119, 0.12);
+  border-color: rgba(255, 119, 119, 0.28);
+}
+
+.quick-btn-wide {
+  grid-column: 1 / -1;
+}
+
+.command-shell {
+  display: grid;
+  gap: 14px;
+}
+
+.command-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.command-title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.command-sub {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.takeoff-row {
+  display: grid;
+  grid-template-columns: minmax(0, 220px) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.takeoff-field {
+  display: grid;
+  gap: 8px;
+}
+
+.takeoff-field span {
+  color: var(--muted);
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.takeoff-field input {
+  width: 100%;
+  border: 1px solid rgba(126, 164, 194, 0.18);
+  border-radius: 14px;
+  background: rgba(126, 164, 194, 0.06);
+  color: var(--text);
+  padding: 12px 14px;
+  font: inherit;
+}
+
+.takeoff-field input:disabled {
+  opacity: 0.5;
+}
+
+.quick-status {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(67, 212, 141, 0.16);
+  background: rgba(67, 212, 141, 0.08);
+  color: var(--ok);
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+.quick-status.is-error {
+  border-color: rgba(255, 119, 119, 0.18);
+  background: rgba(255, 119, 119, 0.08);
+  color: var(--danger);
 }
 
 .dossier-stack {
@@ -979,6 +1109,14 @@ h1 {
   }
 
   .dossier-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .quick-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .takeoff-row {
     grid-template-columns: 1fr;
   }
 

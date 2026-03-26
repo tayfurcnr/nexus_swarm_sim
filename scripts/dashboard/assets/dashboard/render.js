@@ -70,7 +70,7 @@ export function renderVehicleList(data, onSelect) {
   }
 }
 
-export function renderVehicleDetail(data) {
+export function renderVehicleDetail(data, onCommand) {
   const detail = document.getElementById("selectedSummary");
   const vehicle = getSelectedVehicle(data);
 
@@ -92,7 +92,6 @@ export function renderVehicleDetail(data) {
   const missionState = vehicle.state?.armed ? "Armed" : "Standby";
   const navState = vehicle.state?.guided ? "Guided" : "Tracked";
   const telemetryState = vehicle.state?.connected ? "Telemetry Linked" : "No FCU Link";
-
   const html = `
     <div class="dossier-shell">
       <p class="eyebrow">Selected Vehicle</p>
@@ -191,6 +190,72 @@ export function renderVehicleDetail(data) {
   state.lastSelectionRenderId = vehicle.id;
 }
 
+export function renderCommandPanel(data, onCommand) {
+  const panel = document.getElementById("commandPanel");
+  const vehicle = getSelectedVehicle(data);
+
+  if (!vehicle) {
+    panel.innerHTML = '<div class="muted">Select a vehicle to send arm, mode, and takeoff commands.</div>';
+    return;
+  }
+
+  const commandStatus = state.commandStatus
+    ? `<div class="quick-status${state.commandError ? " is-error" : ""}">${escapeHtml(state.commandStatus)}</div>`
+    : "";
+  const connected = !!vehicle.state?.connected;
+
+  panel.innerHTML = `
+    <div class="command-shell">
+      <div class="command-head">
+        <div>
+          <div class="command-title">${escapeHtml(vehicle.label)}</div>
+          <div class="command-sub">${escapeHtml(vehicle.namespace ?? "--")} · ${connected ? "FCU Connected" : "No FCU Link"}</div>
+        </div>
+        <span class="dossier-tag ${connected ? "is-live" : "is-cold"}">${escapeHtml(vehicle.state?.mode || "N/A")}</span>
+      </div>
+
+      <div class="quick-actions">
+        <button type="button" class="quick-btn" data-command="set_mode" data-mode="GUIDED">GUIDED</button>
+        <button type="button" class="quick-btn" data-command="set_mode" data-mode="LOITER">LOITER</button>
+        <button type="button" class="quick-btn" data-command="arm">ARM</button>
+        <button type="button" class="quick-btn quick-btn-warn" data-command="disarm">DISARM</button>
+      </div>
+
+      <div class="takeoff-row">
+        <label class="takeoff-field">
+          <span>Takeoff Altitude (m)</span>
+          <input id="takeoffAltitude" type="number" min="0.5" step="0.5" value="${escapeHtml(String(state.takeoffAltitude))}">
+        </label>
+        <button type="button" class="quick-btn quick-btn-accent" data-command="takeoff">TAKEOFF</button>
+      </div>
+
+      ${commandStatus}
+    </div>
+  `;
+
+  const altitudeInput = panel.querySelector("#takeoffAltitude");
+  if (altitudeInput) {
+    altitudeInput.disabled = state.commandBusy || !connected;
+    altitudeInput.addEventListener("input", () => {
+      const nextValue = Number(altitudeInput.value);
+      if (Number.isFinite(nextValue) && nextValue > 0) {
+        state.takeoffAltitude = nextValue;
+      }
+    });
+  }
+
+  for (const button of panel.querySelectorAll("[data-command]")) {
+    button.disabled = state.commandBusy || !connected;
+    button.addEventListener("click", () => {
+      const command = button.dataset.command;
+      const payload = {};
+      if (button.dataset.mode) payload.mode = button.dataset.mode;
+      if (command === "takeoff") payload.altitude = state.takeoffAltitude;
+      onCommand(vehicle.id, command, payload);
+    });
+  }
+}
+
 export function renderNeighborList(data) {
   const list = document.getElementById("neighborList");
   const vehicle = getSelectedVehicle(data);
@@ -224,11 +289,12 @@ export function renderNeighborList(data) {
   }).join("");
 }
 
-export function renderAll(data, onSelect) {
+export function renderAll(data, onSelect, onCommand) {
   state.latest = data;
   renderSystem(data);
   renderVehicleList(data, onSelect);
-  renderVehicleDetail(data);
+  renderVehicleDetail(data, onCommand);
+  renderCommandPanel(data, onCommand);
   renderNeighborList(data);
   renderMap(data, onSelect);
 }

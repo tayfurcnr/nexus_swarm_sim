@@ -1,15 +1,34 @@
-import { fetchState } from "./api.js";
+import { fetchState, sendCommand } from "./api.js";
 import { POLL_MS } from "./config.js";
 import { renderAll } from "./render.js";
 import { selectVehicle } from "./select.js";
 import { state } from "./state.js";
 
 function rerender(data) {
-  renderAll(data, handleSelect);
+  renderAll(data, handleSelect, handleCommand);
 }
 
 function handleSelect(id) {
   selectVehicle(id, rerender);
+}
+
+async function handleCommand(vehicleId, command, payload) {
+  if (state.commandBusy) return;
+  state.commandBusy = true;
+  state.commandError = false;
+  state.commandStatus = `${vehicleId}: ${command}...`;
+  if (state.latest) rerender(state.latest);
+
+  try {
+    const result = await sendCommand(vehicleId, command, payload);
+    state.commandStatus = `${vehicleId}: ${result.message || "command sent"}`;
+  } catch (err) {
+    state.commandError = true;
+    state.commandStatus = `${vehicleId}: ${err.message || err}`;
+  } finally {
+    state.commandBusy = false;
+    if (state.latest) rerender(state.latest);
+  }
 }
 
 async function refresh() {

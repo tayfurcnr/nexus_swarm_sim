@@ -7,6 +7,7 @@ from http.server import ThreadingHTTPServer
 try:
     import rospy
     from gazebo_msgs.msg import ModelStates
+    from mavros_msgs.srv import CommandBool, CommandTOL, SetMode
     from mavros_msgs.msg import State
     from nexus_swarm_sim.msg import UwbRange
     from sensor_msgs.msg import NavSatFix
@@ -15,6 +16,9 @@ try:
 except ImportError:
     rospy = None
     ModelStates = None
+    CommandBool = None
+    CommandTOL = None
+    SetMode = None
     State = None
     UwbRange = None
     NavSatFix = None
@@ -210,7 +214,7 @@ class SwarmDashboard:
                     "system_status": 0,
                 }
                 self._vehicle_gps[name] = None
-                self._vehicle_fcu_urls[name] = "N/A"
+                self._vehicle_fcu_urls[name] = self._resolve_fcu_url(name)
                 self._vehicle_subscribers[name] = [
                     rospy.Subscriber(
                         f"/{name}/mavros/state",
@@ -246,7 +250,7 @@ class SwarmDashboard:
                 "system_status": int(msg.system_status),
             }
             self._vehicle_last_seen[drone_id] = time.time()
-            self._vehicle_fcu_urls[drone_id] = rospy.get_param(f"/{drone_id}/mavros/fcu_url", "N/A")
+            self._vehicle_fcu_urls[drone_id] = self._resolve_fcu_url(drone_id)
 
     def _gps_callback(self, msg, drone_id):
         if math.isnan(msg.latitude) or math.isnan(msg.longitude):
@@ -321,6 +325,50 @@ class SwarmDashboard:
                 "links": links,
             }
 
+    def execute_command(self, vehicle_id, command, payload=None):
+        payload = payload or {}
+        if self.demo_mode:
+            raise RuntimeError("Vehicle commands are unavailable in demo mode.")
+        if not vehicle_id:
+            raise ValueError("vehicle_id is required")
+        if vehicle_id not in self._discovered:
+            raise ValueError(f"Unknown vehicle: {vehicle_id}")
+
+        namespace = f"/{vehicle_id}/mavros"
+        if command == "arm":
+            service_name = f"{namespace}/cmd/arming"
+            rospy.wait_for_service(service_name, timeout=5.0)
+            proxy = rospy.ServiceProxy(service_name, CommandBool)
+            response = proxy(True)
+            return {"ok": bool(response.success), "message": response.result if hasattr(response, "result") else "armed"}
+
+        if command == "disarm":
+            service_name = f"{namespace}/cmd/arming"
+            rospy.wait_for_service(service_name, timeout=5.0)
+            proxy = rospy.ServiceProxy(service_name, CommandBool)
+            response = proxy(False)
+            return {"ok": bool(response.success), "message": response.result if hasattr(response, "result") else "disarmed"}
+
+        if command == "set_mode":
+            mode = str(payload.get("mode", "")).strip().upper()
+            if not mode:
+                raise ValueError("mode is required")
+            service_name = f"{namespace}/set_mode"
+            rospy.wait_for_service(service_name, timeout=5.0)
+            proxy = rospy.ServiceProxy(service_name, SetMode)
+            response = proxy(0, mode)
+            return {"ok": bool(response.mode_sent), "message": f"mode -> {mode}"}
+
+        if command == "takeoff":
+            altitude = float(payload.get("altitude", 3.0))
+            service_name = f"{namespace}/cmd/takeoff"
+            rospy.wait_for_service(service_name, timeout=5.0)
+            proxy = rospy.ServiceProxy(service_name, CommandTOL)
+            response = proxy(0.0, 0.0, 0.0, 0.0, altitude)
+            return {"ok": bool(response.success), "message": f"takeoff -> {altitude:.1f} m"}
+
+        raise ValueError(f"Unsupported command: {command}")
+
     @staticmethod
     def _extract_index(drone_id):
         suffix = ""
@@ -329,6 +377,17 @@ class SwarmDashboard:
                 break
             suffix = char + suffix
         return int(suffix) if suffix else -1
+
+    @staticmethod
+    def _resolve_fcu_url(drone_id):
+        for param_name in (
+            f"/{drone_id}/mavros/fcu_url",
+            f"/{drone_id}/mavros_bridge_launcher/fcu_url",
+        ):
+            value = rospy.get_param(param_name, "")
+            if value:
+                return str(value)
+        return "N/A"
 
     @staticmethod
     def _compute_extents(vehicles):

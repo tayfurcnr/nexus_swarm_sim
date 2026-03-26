@@ -15,6 +15,10 @@
     <arg name="sitl_instance" default="0" />
     <arg name="sitl_tcp_port" default="5760" />
     <arg name="world_name" default="$(eval arg('ardupilot_gazebo_root') + '/worlds/iris_arducopter_runway.world')" />
+    <arg name="enable_gimbal" default="false" />
+    <arg name="enable_mavproxy" default="true" />
+    <arg name="mavproxy_console" default="false" />
+    <arg name="mavproxy_map" default="false" />
     <arg name="dashboard" default="$(arg headless)" />
     <arg name="dashboard_host" default="0.0.0.0" />
     <arg name="dashboard_port" default="8787" />
@@ -32,31 +36,23 @@
         <arg name="dashboard_port" value="$(arg dashboard_port)" />
     </include>
 
-    <node name="sitl_session_launcher" pkg="nexus_swarm_sim" type="start_sitl_session.py" output="screen">
-        <param name="ardupilot_root" value="$(arg ardupilot_root)" />
-        <param name="ardupilot_gazebo_root" value="$(arg ardupilot_gazebo_root)" />
-        <param name="vehicle" value="$(arg sitl_vehicle)" />
-        <param name="frame" value="$(arg sitl_frame)" />
-        <param name="instance" value="$(arg sitl_instance)" />
-        <param name="sysid" value="$(arg sitl_sysid)" />
-    </node>
-
-    <group ns="$(arg drone_id)">
-        <include file="$(find mavros)/launch/apm.launch">
-            <arg name="fcu_url" value="tcp://127.0.0.1:$(arg sitl_tcp_port)" />
-            <arg name="gcs_url" value="" />
-            <arg name="tgt_system" value="$(arg sitl_sysid)" />
-            <arg name="tgt_component" value="1" />
-            <arg name="respawn_mavros" value="true" />
-        </include>
-
-        <node name="stream_rate_configurator" pkg="nexus_swarm_sim" type="configure_stream_rates.py" output="screen">
-            <param name="state_topic" value="mavros/state" />
-            <param name="service_name" value="mavros/set_stream_rate" />
-            <param name="stream_id" value="0" />
-            <param name="message_rate" value="20" />
-            <param name="enable" value="true" />
-            <param name="connection_timeout" value="30.0" />
-        </node>
-    </group>
+    <include file="$(find nexus_swarm_sim)/launch/spawn_sitl.launch">
+        <arg name="drone_prefix" value="$(arg drone_prefix)" />
+        <arg name="drone_id" value="$(arg drone_id)" />
+        <arg name="instance" value="$(arg sitl_instance)" />
+        <arg name="sys_id" value="$(arg sitl_sysid)" />
+        <arg name="x" value="0.0" />
+        <arg name="y" value="0.0" />
+        <arg name="z" value="0.2" />
+        <arg name="ardupilot_root" value="$(arg ardupilot_root)" />
+        <arg name="ardupilot_gazebo_root" value="$(arg ardupilot_gazebo_root)" />
+        <arg name="sitl_frame" value="$(arg sitl_frame)" />
+        <arg name="sitl_tcp_port" value="$(arg sitl_tcp_port)" />
+        <arg name="fdm_port_in" value="9002" />
+        <arg name="fdm_port_out" value="9003" />
+        <arg name="enable_gimbal" value="$(arg enable_gimbal)" />
+        <arg name="enable_mavproxy" value="$(arg enable_mavproxy)" />
+        <arg name="mavproxy_console" value="$(arg mavproxy_console)" />
+        <arg name="mavproxy_map" value="$(arg mavproxy_map)" />
+    </include>
 </launch>

@@ -72,6 +72,7 @@ target_link_libraries(
 
 catkin_install_python(PROGRAMS
   scripts/start_sitl_session.py
+  scripts/launch_mavros_bridge.py
   scripts/configure_stream_rates.py
   scripts/spawn_ardupilot_model.py
   scripts/swarm_dashboard.py

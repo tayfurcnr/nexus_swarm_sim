@@ -26,3 +26,24 @@ export async function fetchState() {
     state.refreshing = false;
   }
 }
+
+export async function sendCommand(vehicleId, command, payload = {}) {
+  const res = await fetch("/api/command", {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      vehicle_id: vehicleId,
+      command,
+      payload,
+    }),
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.ok) {
+    throw new Error(data.error || data.message || `HTTP ${res.status}`);
+  }
+  return data;
+}

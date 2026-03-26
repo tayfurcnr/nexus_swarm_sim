@@ -1,26 +1,12 @@
 #!/usr/bin/env python3
 
 import os
-import re
 import shutil
 import sys
 
 import rospy
 from gazebo_msgs.srv import SpawnModel
 from geometry_msgs.msg import Pose
-
-
-def _load_gimbal_model():
-    candidates = [
-        os.path.expanduser("~/.gazebo/models/gimbal_small_2d/model.sdf"),
-        os.path.expanduser("~/Downloads/models/gimbal_small_2d/model.sdf"),
-    ]
-    for path in candidates:
-        if os.path.isfile(path):
-            with open(path, "r", encoding="utf-8") as f:
-                return f.read()
-    raise FileNotFoundError("gimbal_small_2d/model.sdf not found in known Gazebo model paths")
-
 
 def _gimbal_model_source_path():
     candidates = [
@@ -64,7 +50,7 @@ def _prepare_namespaced_gimbal_model(model_name):
     return target_root, target_dir
 
 
-def render_model(template_path, model_name, to_ardupilot_port, from_ardupilot_port):
+def render_model(template_path, model_name, to_ardupilot_port, from_ardupilot_port, enable_gimbal=True):
     with open(template_path, "r", encoding="utf-8") as f:
         content = f.read()
 
@@ -72,12 +58,44 @@ def render_model(template_path, model_name, to_ardupilot_port, from_ardupilot_po
     content = content.replace("iris_demo::iris::iris/imu_link::imu_sensor", f"{model_name}::iris::iris/imu_link::imu_sensor")
     content = content.replace("<fdm_port_in>9002</fdm_port_in>", f"<fdm_port_in>{from_ardupilot_port}</fdm_port_in>", 1)
     content = content.replace("<fdm_port_out>9003</fdm_port_out>", f"<fdm_port_out>{to_ardupilot_port}</fdm_port_out>", 1)
-    gimbal_model_root, gimbal_model_dir = _prepare_namespaced_gimbal_model(model_name)
-    content = content.replace(
-        "<uri>model://gimbal_small_2d</uri>",
-        f"<uri>file://{gimbal_model_dir}</uri>",
-        1,
-    )
+
+    gimbal_model_root = ""
+    if enable_gimbal:
+        gimbal_model_root, gimbal_model_dir = _prepare_namespaced_gimbal_model(model_name)
+        content = content.replace(
+            "<uri>model://gimbal_small_2d</uri>",
+            f"<uri>file://{gimbal_model_dir}</uri>",
+            1,
+        )
+    else:
+        content = content.replace(
+            """
+    <include>
+      <uri>model://gimbal_small_2d</uri>
+      <pose>0 -0.01 0.070 1.57 0 1.57</pose>
+    </include>
+""".strip(),
+            "",
+            1,
+        )
+        content = content.replace(
+            """
+    <joint name="iris_gimbal_mount" type="revolute">
+      <parent>iris::base_link</parent>
+      <child>gimbal_small_2d::base_link</child>
+      <axis>
+        <limit>
+          <lower>0</lower>
+          <upper>0</upper>
+        </limit>
+        <xyz>0 0 1</xyz>
+        <use_parent_model_frame>true</use_parent_model_frame>
+      </axis>
+    </joint>
+""".strip(),
+            "",
+            1,
+        )
 
     return content, gimbal_model_root
 
@@ -93,15 +111,23 @@ def main():
     to_ardupilot_port = int(rospy.get_param("~to_ardupilot_port"))
     from_ardupilot_port = int(rospy.get_param("~from_ardupilot_port"))
     output_path = rospy.get_param("~output_path", "")
+    enable_gimbal = bool(rospy.get_param("~enable_gimbal", True))
 
     if not os.path.isfile(template_path):
         rospy.logfatal("ArduPilot model template not found: %s", template_path)
         return 1
 
-    model_xml, gimbal_model_root = render_model(template_path, model_name, to_ardupilot_port, from_ardupilot_port)
+    model_xml, gimbal_model_root = render_model(
+        template_path,
+        model_name,
+        to_ardupilot_port,
+        from_ardupilot_port,
+        enable_gimbal=enable_gimbal,
+    )
 
-    current_model_path = os.environ.get("GAZEBO_MODEL_PATH", "")
-    os.environ["GAZEBO_MODEL_PATH"] = f"{gimbal_model_root}:{current_model_path}" if current_model_path else gimbal_model_root
+    if gimbal_model_root:
+        current_model_path = os.environ.get("GAZEBO_MODEL_PATH", "")
+        os.environ["GAZEBO_MODEL_PATH"] = f"{gimbal_model_root}:{current_model_path}" if current_model_path else gimbal_model_root
 
     if output_path:
         os.makedirs(os.path.dirname(output_path), exist_ok=True)

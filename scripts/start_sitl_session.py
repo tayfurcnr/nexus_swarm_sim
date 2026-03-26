@@ -28,6 +28,10 @@ def main():
     sysid = int(rospy.get_param("~sysid", 1))
     use_dir = rospy.get_param("~use_dir", "/tmp/ardupilot_sitl_single_vehicle")
     custom_location = rospy.get_param("~custom_location", "")
+    add_param_file = rospy.get_param("~add_param_file", "")
+    enable_mavproxy = bool(rospy.get_param("~enable_mavproxy", False))
+    mavproxy_console = bool(rospy.get_param("~mavproxy_console", False))
+    mavproxy_map = bool(rospy.get_param("~mavproxy_map", False))
 
     sim_vehicle = os.path.join(ardupilot_root, "Tools", "autotest", "sim_vehicle.py")
     if not os.path.isfile(sim_vehicle):
@@ -52,11 +56,21 @@ def main():
         "--use-dir",
         use_dir,
         "--no-rebuild",
-        "--no-mavproxy",
     ]
+
+    if not enable_mavproxy:
+        cmd.append("--no-mavproxy")
+    else:
+        if mavproxy_console:
+            cmd.append("--console")
+        if mavproxy_map:
+            cmd.append("--map")
 
     if custom_location:
         cmd.extend(["--custom-location", custom_location])
+
+    if add_param_file:
+        cmd.extend(["--add-param-file", os.path.expanduser(str(add_param_file).strip())])
 
     rospy.loginfo("Starting SITL session: %s", " ".join(cmd))
 

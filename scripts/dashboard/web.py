@@ -37,6 +37,25 @@ def create_handler(dashboard):
                 return
             self.send_error(404, "Not found")
 
+        def do_POST(self):
+            parsed = urlparse(self.path)
+            if parsed.path != "/api/command":
+                self.send_error(404, "Not found")
+                return
+
+            try:
+                content_length = int(self.headers.get("Content-Length", "0"))
+                body = self.rfile.read(content_length) if content_length > 0 else b"{}"
+                payload = json.loads(body.decode("utf-8"))
+                result = dashboard.execute_command(
+                    payload.get("vehicle_id"),
+                    payload.get("command"),
+                    payload.get("payload") or {},
+                )
+                self._send_json(result)
+            except Exception as exc:
+                self._send_json({"ok": False, "error": str(exc)}, status=400)
+
         def log_message(self, format_string, *args):
             return
 
@@ -48,9 +67,9 @@ def create_handler(dashboard):
             self.end_headers()
             self.wfile.write(encoded)
 
-        def _send_json(self, payload):
+        def _send_json(self, payload, status=200):
             encoded = json.dumps(payload).encode("utf-8")
-            self.send_response(200)
+            self.send_response(status)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.send_header("Cache-Control", "no-store")
             self.send_header("Content-Length", str(len(encoded)))

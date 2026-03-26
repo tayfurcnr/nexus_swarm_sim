@@ -1,6 +1,10 @@
 export const state = {
   selected: null,
   latest: null,
+  takeoffAltitude: 3,
+  commandBusy: false,
+  commandStatus: "",
+  commandError: false,
   markers: new Map(),
   uwbLines: new Map(),
   mapReady: false,

@@ -16,6 +16,10 @@ def main():
     spawn_mode = rospy.get_param('~spawn_mode', 'ardupilot')
     spawn_delay = rospy.get_param('~spawn_delay', 2.0)
     gazebo_model_file = rospy.get_param('~gazebo_model_file', '')
+    enable_gimbal = rospy.get_param('~enable_gimbal', True)
+    enable_mavproxy = rospy.get_param('~enable_mavproxy', False)
+    mavproxy_console = rospy.get_param('~mavproxy_console', False)
+    mavproxy_map = rospy.get_param('~mavproxy_map', False)
 
     processes = []
 
@@ -80,6 +84,10 @@ def main():
                 f"x:={x}",
                 f"y:={y}",
                 f"z:={z}",
+                f"enable_gimbal:={'true' if enable_gimbal else 'false'}",
+                f"enable_mavproxy:={'true' if enable_mavproxy else 'false'}",
+                f"mavproxy_console:={'true' if mavproxy_console else 'false'}",
+                f"mavproxy_map:={'true' if mavproxy_map else 'false'}",
             ]
 
         proc = subprocess.Popen(cmd, preexec_fn=os.setsid)
