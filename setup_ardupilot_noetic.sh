@@ -165,7 +165,7 @@ catkin build > /dev/null 2>&1
 
 echo -e "\n${GREEN}=================================================="
 echo "✓ Setup complete"
-echo "==================================================${NC}\n"
+echo -e "==================================================${NC}\n"
 
 echo -e "${YELLOW}Next steps:${NC}"
 echo "1. Source the workspace:"
