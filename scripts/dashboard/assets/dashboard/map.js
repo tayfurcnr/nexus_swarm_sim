@@ -21,6 +21,7 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
 
 const sharedCanvas = L.canvas({ padding: 0.5 });
 state.mapReady = true;
+let mapClickHandler = null;
 
 export function vehicleLatLng(vehicle) {
   if (!vehicle || !vehicle.gps) return null;
@@ -75,8 +76,37 @@ export function updateMarkerClasses(data) {
   }
 }
 
-export function renderMap(data, onSelect) {
+function renderTargetMarker() {
+  const target = state.pendingTarget;
+  if (!target) {
+    if (state.targetMarker) {
+      map.removeLayer(state.targetMarker);
+      state.targetMarker = null;
+    }
+    return;
+  }
+
+  const latlng = [target.latitude, target.longitude];
+  if (!state.targetMarker) {
+    state.targetMarker = L.circleMarker(latlng, {
+      radius: 9,
+      color: "rgba(255, 122, 69, 0.96)",
+      weight: 2,
+      fillColor: "rgba(255, 122, 69, 0.28)",
+      fillOpacity: 0.9,
+    }).addTo(map);
+  } else {
+    state.targetMarker.setLatLng(latlng);
+  }
+}
+
+export function renderMap(data, onSelect, onMapTarget) {
   if (!state.mapReady) return;
+
+  if (!mapClickHandler) {
+    mapClickHandler = (event) => onMapTarget(event.latlng);
+    map.on("click", mapClickHandler);
+  }
 
   const vehiclesById = buildVehicleIndex(data);
   const validVehicles = data.vehicles.filter((vehicle) => vehicleLatLng(vehicle));
@@ -102,11 +132,16 @@ export function renderMap(data, onSelect) {
       const entry = state.markers.get(id);
       entry.marker.setLatLng(latlng);
       entry.labelMarker.setLatLng(latlng);
-      entry.marker.setIcon(makeMarkerIcon(id, vehicle.heading_deg));
+      if (entry.el) {
+        entry.el.style.setProperty("--heading", `${Number.isFinite(vehicle.heading_deg) ? vehicle.heading_deg : 0}deg`);
+      }
     } else {
       const marker = L.marker(latlng, { icon: makeMarkerIcon(id, vehicle.heading_deg) })
         .addTo(map)
-        .on("click", () => onSelect(id));
+        .on("click", (event) => {
+          L.DomEvent.stopPropagation(event);
+          onSelect(id);
+        });
 
       const labelMarker = L.marker(latlng, {
         icon: makeLabelIcon(vehicle.label),
@@ -136,6 +171,7 @@ export function renderMap(data, onSelect) {
   }
 
   renderLinks(data, vehiclesById);
+  renderTargetMarker();
   updateMarkerClasses(data);
 }
 

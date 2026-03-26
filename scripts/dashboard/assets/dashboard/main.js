@@ -5,7 +5,7 @@ import { selectVehicle } from "./select.js";
 import { state } from "./state.js";
 
 function rerender(data) {
-  renderAll(data, handleSelect, handleCommand);
+  renderAll(data, handleSelect, handleCommand, handleMapTarget);
 }
 
 function handleSelect(id) {
@@ -29,6 +29,25 @@ async function handleCommand(vehicleId, command, payload) {
     state.commandBusy = false;
     if (state.latest) rerender(state.latest);
   }
+}
+
+async function handleMapTarget(latlng) {
+  if (!state.selected || !state.clickToGoArmed) return;
+
+  const payload = {
+    latitude: latlng.lat,
+    longitude: latlng.lng,
+    altitude: state.gotoAltitude,
+  };
+  state.pendingTarget = {
+    vehicleId: state.selected,
+    latitude: payload.latitude,
+    longitude: payload.longitude,
+    altitude: payload.altitude,
+  };
+
+  if (state.latest) rerender(state.latest);
+  await handleCommand(state.selected, "go_to", payload);
 }
 
 async function refresh() {

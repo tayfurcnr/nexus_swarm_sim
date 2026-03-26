@@ -46,6 +46,8 @@ source devel/setup.bash
 roslaunch nexus_swarm_sim full_swarm.launch num_drones:=3
 ```
 
+Dashboard is available at `http://localhost:8787` during `full_swarm.launch`.
+
 ### Non-SITL Bringup
 
 ```bash

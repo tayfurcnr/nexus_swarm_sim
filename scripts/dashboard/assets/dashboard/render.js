@@ -81,6 +81,7 @@ export function renderVehicleDetail(data, onCommand) {
       <p class="sub">Select a vehicle on the map or from the roster.</p>
     `;
     state.lastSelectionRenderId = null;
+    state.lastVehicleDetailSignature = "";
     return;
   }
 
@@ -92,6 +93,17 @@ export function renderVehicleDetail(data, onCommand) {
   const missionState = vehicle.state?.armed ? "Armed" : "Standby";
   const navState = vehicle.state?.guided ? "Guided" : "Tracked";
   const telemetryState = vehicle.state?.connected ? "Telemetry Linked" : "No FCU Link";
+  const signature = JSON.stringify({
+    id: vehicle.id,
+    position: vehicle.position,
+    gps: vehicle.gps,
+    state: vehicle.state,
+    host_ip: vehicle.host_ip,
+    hostname: vehicle.hostname,
+    fcu_url: vehicle.fcu_url,
+    last_seen_sec: vehicle.last_seen_sec,
+    link_count: links.length,
+  });
   const html = `
     <div class="dossier-shell">
       <p class="eyebrow">Selected Vehicle</p>
@@ -183,8 +195,9 @@ export function renderVehicleDetail(data, onCommand) {
     </div>
   `;
 
-  if (detail.innerHTML !== html) {
+  if (signature !== state.lastVehicleDetailSignature && detail.innerHTML !== html) {
     detail.innerHTML = html;
+    state.lastVehicleDetailSignature = signature;
   }
 
   state.lastSelectionRenderId = vehicle.id;
@@ -195,7 +208,8 @@ export function renderCommandPanel(data, onCommand) {
   const vehicle = getSelectedVehicle(data);
 
   if (!vehicle) {
-    panel.innerHTML = '<div class="muted">Select a vehicle to send arm, mode, and takeoff commands.</div>';
+    panel.innerHTML = '<div class="muted">Select a vehicle to send arm, mode, takeoff, and map target commands.</div>';
+    state.lastCommandPanelSignature = "";
     return;
   }
 
@@ -203,8 +217,22 @@ export function renderCommandPanel(data, onCommand) {
     ? `<div class="quick-status${state.commandError ? " is-error" : ""}">${escapeHtml(state.commandStatus)}</div>`
     : "";
   const connected = !!vehicle.state?.connected;
+  const pendingTarget = state.pendingTarget && state.pendingTarget.vehicleId === vehicle.id
+    ? `<div class="target-readout">Target: ${escapeHtml(fmt7(state.pendingTarget.latitude))}, ${escapeHtml(fmt7(state.pendingTarget.longitude))} @ ${escapeHtml(fmt(state.pendingTarget.altitude))} m</div>`
+    : "";
+  const signature = JSON.stringify({
+    id: vehicle.id,
+    connected,
+    mode: vehicle.state?.mode,
+    commandStatus: state.commandStatus,
+    commandError: state.commandError,
+    takeoffAltitude: state.takeoffAltitude,
+    gotoAltitude: state.gotoAltitude,
+    clickToGoArmed: state.clickToGoArmed,
+    pendingTarget: state.pendingTarget,
+  });
 
-  panel.innerHTML = `
+  const html = `
     <div class="command-shell">
       <div class="command-head">
         <div>
@@ -229,9 +257,26 @@ export function renderCommandPanel(data, onCommand) {
         <button type="button" class="quick-btn quick-btn-accent" data-command="takeoff">TAKEOFF</button>
       </div>
 
+      <div class="goto-row">
+        <label class="takeoff-field">
+          <span>Goto Altitude (m)</span>
+          <input id="gotoAltitude" type="number" min="0.5" step="0.5" value="${escapeHtml(String(state.gotoAltitude))}">
+        </label>
+        <button type="button" class="quick-btn ${state.clickToGoArmed ? "quick-btn-accent" : ""}" id="clickToGoToggle">${state.clickToGoArmed ? "CLICK-TO-GO ON" : "CLICK-TO-GO"}</button>
+      </div>
+
+      <div class="goto-hint">${state.clickToGoArmed ? "Click an empty point on the map to send the selected vehicle there in GUIDED mode." : "Arm click-to-go, then click an empty point on the map to send the selected vehicle."}</div>
+
+      ${pendingTarget}
+
       ${commandStatus}
     </div>
   `;
+
+  if (signature !== state.lastCommandPanelSignature || panel.innerHTML !== html) {
+    panel.innerHTML = html;
+    state.lastCommandPanelSignature = signature;
+  }
 
   const altitudeInput = panel.querySelector("#takeoffAltitude");
   if (altitudeInput) {
@@ -241,6 +286,26 @@ export function renderCommandPanel(data, onCommand) {
       if (Number.isFinite(nextValue) && nextValue > 0) {
         state.takeoffAltitude = nextValue;
       }
+    });
+  }
+
+  const gotoAltitudeInput = panel.querySelector("#gotoAltitude");
+  if (gotoAltitudeInput) {
+    gotoAltitudeInput.disabled = state.commandBusy || !connected;
+    gotoAltitudeInput.addEventListener("input", () => {
+      const nextValue = Number(gotoAltitudeInput.value);
+      if (Number.isFinite(nextValue) && nextValue > 0) {
+        state.gotoAltitude = nextValue;
+      }
+    });
+  }
+
+  const clickToGoToggle = panel.querySelector("#clickToGoToggle");
+  if (clickToGoToggle) {
+    clickToGoToggle.disabled = state.commandBusy || !connected;
+    clickToGoToggle.addEventListener("click", () => {
+      state.clickToGoArmed = !state.clickToGoArmed;
+      renderCommandPanel(data, onCommand);
     });
   }
 
@@ -289,12 +354,12 @@ export function renderNeighborList(data) {
   }).join("");
 }
 
-export function renderAll(data, onSelect, onCommand) {
+export function renderAll(data, onSelect, onCommand, onMapTarget) {
   state.latest = data;
   renderSystem(data);
   renderVehicleList(data, onSelect);
   renderVehicleDetail(data, onCommand);
   renderCommandPanel(data, onCommand);
   renderNeighborList(data);
-  renderMap(data, onSelect);
+  renderMap(data, onSelect, onMapTarget);
 }

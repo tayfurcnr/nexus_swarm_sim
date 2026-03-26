@@ -375,6 +375,13 @@ h1 {
   align-items: end;
 }
 
+.goto-row {
+  display: grid;
+  grid-template-columns: minmax(0, 220px) auto;
+  gap: 12px;
+  align-items: end;
+}
+
 .takeoff-field {
   display: grid;
   gap: 8px;
@@ -399,6 +406,22 @@ h1 {
 
 .takeoff-field input:disabled {
   opacity: 0.5;
+}
+
+.goto-hint {
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.target-readout {
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 122, 69, 0.22);
+  background: rgba(255, 122, 69, 0.08);
+  color: var(--text);
+  font-size: 0.84rem;
+  line-height: 1.4;
 }
 
 .quick-status {

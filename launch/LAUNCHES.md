@@ -138,8 +138,10 @@ Common defaults:
 - `num_drones:=12` in `full_swarm.launch`
 
 Dashboard defaults:
-- `dashboard:=true` when `headless:=true`
-- `dashboard:=false` when `headless:=false`
+- `full_swarm.launch`: `dashboard:=true`
+- `models_only.launch`: `dashboard:=$(arg headless)`
+- `single_vehicle_sitl.launch`: `dashboard:=$(arg headless)`
+- `uwb_only.launch`: `dashboard:=$(arg headless)`
 - `dashboard_host:=0.0.0.0`
 - `dashboard_port:=8787`
 

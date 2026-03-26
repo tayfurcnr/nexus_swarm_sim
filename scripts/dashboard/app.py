@@ -8,7 +8,7 @@ try:
     import rospy
     from gazebo_msgs.msg import ModelStates
     from mavros_msgs.srv import CommandBool, CommandTOL, SetMode
-    from mavros_msgs.msg import State
+    from mavros_msgs.msg import GlobalPositionTarget, State
     from nexus_swarm_sim.msg import UwbRange
     from sensor_msgs.msg import NavSatFix
 
@@ -18,6 +18,7 @@ except ImportError:
     ModelStates = None
     CommandBool = None
     CommandTOL = None
+    GlobalPositionTarget = None
     SetMode = None
     State = None
     UwbRange = None
@@ -75,6 +76,7 @@ class SwarmDashboard:
         self._vehicle_headings = {}
         self._vehicle_fcu_urls = {}
         self._vehicle_last_seen = {}
+        self._global_target_publishers = {}
         self._uwb_links = {}
 
         if not self.demo_mode:
@@ -366,6 +368,59 @@ class SwarmDashboard:
             proxy = rospy.ServiceProxy(service_name, CommandTOL)
             response = proxy(0.0, 0.0, 0.0, 0.0, altitude)
             return {"ok": bool(response.success), "message": f"takeoff -> {altitude:.1f} m"}
+
+        if command == "go_to":
+            latitude = float(payload.get("latitude"))
+            longitude = float(payload.get("longitude"))
+            relative_altitude = float(payload.get("altitude", 10.0))
+            if not -90.0 <= latitude <= 90.0:
+                raise ValueError("latitude must be between -90 and 90")
+            if not -180.0 <= longitude <= 180.0:
+                raise ValueError("longitude must be between -180 and 180")
+            if relative_altitude <= 0.0:
+                raise ValueError("altitude must be positive")
+
+            mode_service = f"{namespace}/set_mode"
+            rospy.wait_for_service(mode_service, timeout=5.0)
+            mode_proxy = rospy.ServiceProxy(mode_service, SetMode)
+            mode_response = mode_proxy(0, "GUIDED")
+            if not bool(mode_response.mode_sent):
+                raise RuntimeError("failed to switch vehicle to GUIDED mode")
+
+            target_publisher = self._global_target_publishers.get(vehicle_id)
+            if target_publisher is None:
+                topic_name = f"{namespace}/setpoint_raw/global"
+                target_publisher = rospy.Publisher(topic_name, GlobalPositionTarget, queue_size=10)
+                self._global_target_publishers[vehicle_id] = target_publisher
+                time.sleep(0.2)
+
+            target = GlobalPositionTarget()
+            target.coordinate_frame = GlobalPositionTarget.FRAME_GLOBAL_REL_ALT
+            target.type_mask = (
+                GlobalPositionTarget.IGNORE_VX
+                | GlobalPositionTarget.IGNORE_VY
+                | GlobalPositionTarget.IGNORE_VZ
+                | GlobalPositionTarget.IGNORE_AFX
+                | GlobalPositionTarget.IGNORE_AFY
+                | GlobalPositionTarget.IGNORE_AFZ
+                | GlobalPositionTarget.IGNORE_YAW
+                | GlobalPositionTarget.IGNORE_YAW_RATE
+            )
+            target.latitude = latitude
+            target.longitude = longitude
+            target.altitude = relative_altitude
+
+            publish_deadline = time.time() + 2.0
+            publish_rate = rospy.Rate(5)
+            while time.time() < publish_deadline and not rospy.is_shutdown():
+                target.header.stamp = rospy.Time.now()
+                target_publisher.publish(target)
+                publish_rate.sleep()
+
+            return {
+                "ok": True,
+                "message": f"go_to -> {latitude:.7f}, {longitude:.7f}, rel {relative_altitude:.1f} m",
+            }
 
         raise ValueError(f"Unsupported command: {command}")
 
