@@ -32,7 +32,7 @@ Helper launches:
 - `spawn_model.launch`
 - `spawn_sitl.launch`
 
-Helper launch files are typically started by [swarm_launcher.py](/home/tayfurcnr/swarm_ws/src/nexus_swarm_sim/scripts/swarm_launcher.py), not by hand.
+Helper launch files are typically started by [swarm_launcher.py](../scripts/swarm_launcher.py), not by hand.
 
 ## Public Launches
 

@@ -50,7 +50,7 @@ This layout matches the current runtime expectations used by the launch files an
 
 ## What The Setup Script Installs
 
-Running [setup_ardupilot_noetic.sh](/home/tayfurcnr/swarm_ws/src/nexus_swarm_sim/setup_ardupilot_noetic.sh) prepares the following:
+Running [setup_ardupilot_noetic.sh](setup_ardupilot_noetic.sh) prepares the following:
 - ROS, Gazebo, and MAVROS-related system packages
 - GeographicLib datasets required by MAVROS
 - Python dependencies from `requirements.txt`

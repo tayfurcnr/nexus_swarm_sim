@@ -107,9 +107,9 @@ Default naming:
 
 Use the repository documents by purpose:
 
-- [INSTALL.md](/home/tayfurcnr/swarm_ws/src/nexus_swarm_sim/INSTALL.md): complete installation flow, dependency recovery, validation checks, and bringup order
-- [LAUNCHES.md](/home/tayfurcnr/swarm_ws/src/nexus_swarm_sim/launch/LAUNCHES.md): launch entry points, examples, defaults, and intended usage
-- [setup_ardupilot_noetic.sh](/home/tayfurcnr/swarm_ws/src/nexus_swarm_sim/setup_ardupilot_noetic.sh): automated setup for the full ArduPilot-backed environment
+- [INSTALL.md](INSTALL.md): complete installation flow, dependency recovery, validation checks, and bringup order
+- [LAUNCHES.md](launch/LAUNCHES.md): launch entry points, examples, defaults, and intended usage
+- [setup_ardupilot_noetic.sh](setup_ardupilot_noetic.sh): automated setup for the full ArduPilot-backed environment
 
 ## Operational Notes
 
