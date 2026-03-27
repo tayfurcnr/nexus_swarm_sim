@@ -2,19 +2,14 @@
 # Swarm Gazebo Simulation - ArduPilot + ROS Noetic Setup
 # This script prepares a catkin workspace for the full ArduPilot-backed test flow.
 
-set -e
+set -Eeuo pipefail
 
 WORKSPACE_DIR="${WORKSPACE_DIR:-${HOME}/swarm_ws}"
 REPO_URL="https://github.com/tayfurcnr/nexus_swarm_sim.git"
 REPO_DIR="${WORKSPACE_DIR}/src/nexus_swarm_sim"
 ARDUPILOT_DIR="${HOME}/ardupilot"
 ARDUPILOT_GAZEBO_DIR="${HOME}/ardupilot_gazebo"
-
-echo "=================================================="
-echo "Swarm Gazebo Simulation - ArduPilot Setup"
-echo "Ubuntu 20.04 + ROS Noetic + Gazebo 11 Classic"
-echo "Workspace: ${WORKSPACE_DIR}"
-echo "=================================================="
+BASHRC_FILE="${HOME}/.bashrc"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -25,6 +20,98 @@ AUTO_YES=0
 if [ "${1:-}" = "--yes" ] || [ "${AUTO_YES:-0}" = "1" ]; then
     AUTO_YES=1
 fi
+
+if [ ! -t 0 ] && [ "${AUTO_YES}" = "0" ]; then
+    AUTO_YES=1
+fi
+
+fail() {
+    echo -e "${RED}✗${NC} $1" >&2
+    exit 1
+}
+
+info() {
+    echo -e "${YELLOW}→${NC} $1"
+}
+
+success() {
+    echo -e "${GREEN}✓${NC} $1"
+}
+
+on_error() {
+    local exit_code=$?
+    echo -e "\n${RED}✗ Setup failed${NC} at line ${BASH_LINENO[0]} while running: ${BASH_COMMAND}" >&2
+    exit "${exit_code}"
+}
+
+trap on_error ERR
+
+echo "=================================================="
+echo "Swarm Gazebo Simulation - ArduPilot Setup"
+echo "Ubuntu 20.04 + ROS Noetic + Gazebo 11 Classic"
+echo "Workspace: ${WORKSPACE_DIR}"
+echo "=================================================="
+
+require_command() {
+    command -v "$1" >/dev/null 2>&1 || fail "Required command not found: $1"
+}
+
+package_installed() {
+    dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -q "install ok installed"
+}
+
+append_line_once() {
+    local line="$1"
+    local file="$2"
+    touch "${file}"
+    grep -Fqx "${line}" "${file}" 2>/dev/null || echo "${line}" >> "${file}"
+}
+
+assert_supported_platform() {
+    require_command lsb_release
+
+    local distro release
+    distro="$(lsb_release -is)"
+    release="$(lsb_release -rs)"
+
+    if [ "${distro}" != "Ubuntu" ] || [ "${release}" != "20.04" ]; then
+        fail "This script targets Ubuntu 20.04. Detected ${distro} ${release}."
+    fi
+
+    if [ ! -f "/opt/ros/noetic/setup.bash" ]; then
+        fail "ROS Noetic was not found at /opt/ros/noetic/setup.bash"
+    fi
+}
+
+validate_installation() {
+    local missing=0
+
+    if [ ! -f "${ARDUPILOT_DIR}/Tools/autotest/sim_vehicle.py" ]; then
+        echo -e "${YELLOW}!${NC} Missing ${ARDUPILOT_DIR}/Tools/autotest/sim_vehicle.py"
+        missing=1
+    fi
+
+    if [ ! -f "${ARDUPILOT_GAZEBO_DIR}/models/iris_with_ardupilot/model.sdf" ]; then
+        echo -e "${YELLOW}!${NC} Missing ${ARDUPILOT_GAZEBO_DIR}/models/iris_with_ardupilot/model.sdf"
+        missing=1
+    fi
+
+    if ! rospack find mavros >/dev/null 2>&1; then
+        echo -e "${YELLOW}!${NC} rospack could not find mavros"
+        missing=1
+    fi
+
+    if [ ! -f "${WORKSPACE_DIR}/devel/setup.bash" ]; then
+        echo -e "${YELLOW}!${NC} Missing ${WORKSPACE_DIR}/devel/setup.bash"
+        missing=1
+    fi
+
+    if [ "${missing}" = "0" ]; then
+        success "Post-install validation passed"
+    else
+        echo -e "${YELLOW}!${NC} Setup completed with validation warnings"
+    fi
+}
 
 confirm_step() {
     local step_label="$1"
@@ -64,6 +151,14 @@ confirm_step() {
     esac
 }
 
+assert_supported_platform
+require_command sudo
+require_command git
+require_command wget
+require_command python3
+require_command dpkg-query
+require_command rospack
+
 echo -e "${YELLOW}[1/6] System packages${NC}"
 sudo apt update
 
@@ -82,11 +177,11 @@ PACKAGES=(
 )
 
 for pkg in "${PACKAGES[@]}"; do
-    if dpkg -l | grep -q "^ii  $pkg"; then
-        echo -e "${GREEN}✓${NC} $pkg installed"
+    if package_installed "${pkg}"; then
+        success "${pkg} installed"
     else
-        echo -e "${YELLOW}→${NC} installing $pkg"
-        sudo apt install -y "$pkg"
+        info "installing ${pkg}"
+        sudo apt install -y "${pkg}"
     fi
 done
 
@@ -94,9 +189,9 @@ echo -e "\n${YELLOW}[2/6] GeographicLib datasets${NC}"
 if [ ! -f "/etc/profile.d/mavros_geod.sh" ]; then
     wget -q https://raw.githubusercontent.com/mavlink/mavros/master/mavros/scripts/install_geographiclib_datasets.sh -O /tmp/install_geographiclib.sh
     sudo bash /tmp/install_geographiclib.sh
-    echo -e "${GREEN}✓${NC} GeographicLib datasets installed"
+    success "GeographicLib datasets installed"
 else
-    echo -e "${GREEN}✓${NC} GeographicLib datasets already installed"
+    success "GeographicLib datasets already installed"
 fi
 
 echo -e "\n${YELLOW}[3/6] Workspace setup${NC}"
@@ -105,63 +200,93 @@ cd "${WORKSPACE_DIR}"
 
 echo -e "\n${YELLOW}[4/6] Source repositories${NC}"
 if [ ! -d "${REPO_DIR}" ]; then
-    echo -e "${YELLOW}→${NC} cloning nexus_swarm_sim"
+    info "cloning nexus_swarm_sim"
     git clone "${REPO_URL}" "${REPO_DIR}"
 else
-    echo -e "${GREEN}✓${NC} nexus_swarm_sim already present"
+    success "nexus_swarm_sim already present"
 fi
 
 echo -e "\n${YELLOW}[5/6] Python dependencies${NC}"
 sudo -H python3 -m pip install -q -r "${REPO_DIR}/requirements.txt"
-echo -e "${GREEN}✓${NC} Python dependencies installed"
+success "Python dependencies installed"
 
 if [ ! -d "${ARDUPILOT_DIR}" ]; then
-    if confirm_step         "5A"         "Clone and build ArduPilot SITL"         "${ARDUPILOT_DIR}"         "clone ArduPilot, install SITL prerequisites, and build ArduCopter"         "full_swarm.launch and single_vehicle_sitl.launch will not work until ArduPilot is installed"; then
-        echo -e "${YELLOW}→${NC} cloning ArduPilot"
+    if confirm_step \
+        "5A" \
+        "Clone and build ArduPilot SITL" \
+        "${ARDUPILOT_DIR}" \
+        "clone ArduPilot, install SITL prerequisites, and build ArduCopter" \
+        "full_swarm.launch and single_vehicle_sitl.launch will not work until ArduPilot is installed"; then
+        info "cloning ArduPilot"
         cd "${HOME}"
         git clone https://github.com/ArduPilot/ardupilot.git
 
-        echo -e "${YELLOW}→${NC} installing ArduPilot prerequisites"
+        info "installing ArduPilot prerequisites"
         cd "${ARDUPILOT_DIR}"
+        git submodule update --init --recursive
         sudo apt install -y python3-opencv python3-wxgtk4.0 python3-matplotlib python3-lxml python3-pygame
         ./Tools/environment_install/install-prereqs-ubuntu.sh -y
-        . "${HOME}/.bashrc"
+        if [ -f "${BASHRC_FILE}" ]; then
+            # The installer may update shell startup files; reload them for this shell.
+            . "${BASHRC_FILE}"
+        fi
 
-        echo -e "${YELLOW}→${NC} building ArduCopter SITL (may take 10-15 minutes)"
+        info "building ArduCopter SITL (may take 10-15 minutes)"
         ./waf configure --board sitl > /dev/null 2>&1
         ./waf copter > /dev/null 2>&1
-        echo -e "${GREEN}✓${NC} ArduPilot built"
+        success "ArduPilot built"
     else
         echo -e "${YELLOW}!${NC} Skipped ArduPilot setup"
     fi
 else
-    echo -e "${GREEN}✓${NC} ArduPilot already present"
+    success "ArduPilot already present"
 fi
 
 if [ ! -d "${ARDUPILOT_GAZEBO_DIR}" ]; then
-    if confirm_step         "5B"         "Clone and build ardupilot_gazebo"         "${ARDUPILOT_GAZEBO_DIR}"         "clone ardupilot_gazebo, build the Gazebo plugin, and install it system-wide"         "full_swarm.launch and single_vehicle_sitl.launch will not work until ardupilot_gazebo is installed"; then
-        echo -e "${YELLOW}→${NC} cloning ardupilot_gazebo"
+    if confirm_step \
+        "5B" \
+        "Clone and build ardupilot_gazebo" \
+        "${ARDUPILOT_GAZEBO_DIR}" \
+        "clone ardupilot_gazebo, build the Gazebo plugin, and install it system-wide" \
+        "full_swarm.launch and single_vehicle_sitl.launch will not work until ardupilot_gazebo is installed"; then
+        info "cloning ardupilot_gazebo"
         cd "${HOME}"
         git clone https://github.com/ArduPilot/ardupilot_gazebo.git
 
-        echo -e "${YELLOW}→${NC} building ardupilot_gazebo plugin"
+        info "building ardupilot_gazebo plugin"
         cd "${ARDUPILOT_GAZEBO_DIR}"
         mkdir -p build
         cd build
         cmake .. -DCMAKE_BUILD_TYPE=Release > /dev/null 2>&1
         make -j"$(nproc)" > /dev/null 2>&1
         sudo make install > /dev/null 2>&1
-        echo -e "${GREEN}✓${NC} ardupilot_gazebo installed"
+        success "ardupilot_gazebo installed"
     else
         echo -e "${YELLOW}!${NC} Skipped ardupilot_gazebo setup"
     fi
 else
-    echo -e "${GREEN}✓${NC} ardupilot_gazebo already present"
+    success "ardupilot_gazebo already present"
 fi
 
 echo -e "\n${YELLOW}[6/6] Catkin build${NC}"
 cd "${WORKSPACE_DIR}"
 catkin build > /dev/null 2>&1
+
+validate_installation
+
+if confirm_step \
+    "6A" \
+    "Persist shell environment helpers" \
+    "${BASHRC_FILE}" \
+    "add ArduPilot PATH exports and workspace sourcing lines to ~/.bashrc if they are missing" \
+    "you will need to source the workspace and export the ArduPilot tool paths manually in each new shell"; then
+    append_line_once "source \"${WORKSPACE_DIR}/devel/setup.bash\"" "${BASHRC_FILE}"
+    append_line_once "export PATH=\"\$PATH:${ARDUPILOT_DIR}/Tools/autotest\"" "${BASHRC_FILE}"
+    append_line_once "export PATH=\"\$PATH:${ARDUPILOT_DIR}/Tools\"" "${BASHRC_FILE}"
+    success "Shell helper lines ensured in ${BASHRC_FILE}"
+else
+    echo -e "${YELLOW}!${NC} Skipped shell environment persistence"
+fi
 
 echo -e "\n${GREEN}=================================================="
 echo "✓ Setup complete"
