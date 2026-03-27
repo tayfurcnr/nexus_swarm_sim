@@ -43,6 +43,14 @@ Low-level signal-oriented outputs are also published per vehicle:
 
 - `/<vehicle>/uwb/raw_signal`
 
+When `raw_signal_protocol` is set to `ds_twr`, this topic carries a simulated
+double-sided TWR frame exchange sequence rather than a single synthetic frame.
+The current frame progression is:
+
+- `FRAME_POLL`
+- `FRAME_RESP`
+- `FRAME_FINAL`
+
 Payload injection inputs are accepted per vehicle:
 
 - `/<vehicle>/uwb/tx/payload`
@@ -91,6 +99,14 @@ It is intended for:
 
 It is the better starting point for future sim-to-real interface evolution.
 It should avoid simulator-truth and processed-range fields and instead carry hardware-aligned low-level signal metrics.
+
+The simulator can currently emit either:
+
+- a single synthetic raw frame per ranging cycle (`raw_signal_protocol=single`)
+- a simulated DS-TWR exchange sequence (`raw_signal_protocol=ds_twr`)
+
+The DS-TWR mode is the preferred realism path for downstream packages that want
+to own state-machine and timestamp interpretation logic.
 
 ## Current Mounting Assumption
 
@@ -262,6 +278,12 @@ The payload bytes currently come from the latest message published to `/<vehicle
 
 `tx_timestamp_ps` and `rx_timestamp_ps` are simulator-derived picosecond timestamps intended to be closer to a driver-facing timestamp contract than `toa_ns` alone.
 `toa_ns` remains as a convenience field derived from the same simulated timing path.
+
+When DS-TWR mode is active:
+
+- `toa_ns` represents a per-frame one-way arrival estimate
+- `frame_type` indicates where the frame belongs in the simulated exchange
+- `frame_seq` increments per transmitting vehicle, not globally
 
 `cir_real` and `cir_imag` are lightweight simulated CIR diagnostics.
 They should be treated as approximate low-level signal-shape hints, not as calibrated hardware dumps.

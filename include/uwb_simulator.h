@@ -149,6 +149,9 @@ class UwbSimulator
         double update_rate_hz_;
         double debug_rate_hz_;
         std::map<range_publisher, int> publish_counters_;  // Per-pair counter to throttle updates
+        std::string raw_signal_protocol_;
+        double ds_twr_resp_delay_us_;
+        double ds_twr_final_delay_us_;
         
         // Dropout model
         double p_drop_base_;
@@ -237,6 +240,20 @@ class UwbSimulator
         uint16_t next_frame_sequence(const std::string& src_id);
         double get_clock_offset_ppm(const std::string& drone_id);
         void generate_cir_samples(float snr_db, bool los, std::vector<int16_t>& cir_real, std::vector<int16_t>& cir_imag);
+        void publish_raw_signal_frame(const std::string& tx_drone,
+                                      const std::string& rx_drone,
+                                      ros::Time publish_stamp,
+                                      uint8_t frame_type,
+                                      uint64_t tx_timestamp_ps,
+                                      uint64_t rx_timestamp_ps,
+                                      float clock_offset_ppm,
+                                      float toa_ns,
+                                      float snr_db,
+                                      float rssi,
+                                      float first_path_power_dbm,
+                                      float sts_quality,
+                                      bool los,
+                                      bool outlier_injected);
         
         // Raw signal generation (low-level ToA-based measurement)
         void generate_raw_signal(double measured_distance_m, double true_distance_m, bool los, 

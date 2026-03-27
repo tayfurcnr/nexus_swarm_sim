@@ -34,6 +34,9 @@ UwbSimulator::UwbSimulator(ros::NodeHandle& nh) : nh_(nh)
     // ===== DW3000-Realistic Parameters =====
     nh_.param<double>("/uwb_simulator/update_rate_hz", update_rate_hz_, 15.0);
     nh_.param<double>("/uwb_simulator/debug_rate_hz", debug_rate_hz_, 100.0);
+    nh_.param<std::string>("/uwb_simulator/raw_signal_protocol", raw_signal_protocol_, std::string("ds_twr"));
+    nh_.param<double>("/uwb_simulator/ds_twr_resp_delay_us", ds_twr_resp_delay_us_, 300.0);
+    nh_.param<double>("/uwb_simulator/ds_twr_final_delay_us", ds_twr_final_delay_us_, 350.0);
     
     nh_.param<double>("/uwb_simulator/p_drop_base", p_drop_base_, 0.01);
     nh_.param<double>("/uwb_simulator/p_drop_slope", p_drop_slope_, 0.005);
@@ -401,16 +404,6 @@ void UwbSimulator::publish_ranges(const ros::TimerEvent& event)
         float quality = estimate_quality(snr_db, los, outlier_injected);
         float fppl = estimate_fppl(rssi, los);
         float sts_quality = estimate_sts_quality(snr_db, los, outlier_injected);
-        uint16_t frame_seq = next_frame_sequence(elem.first.ori_node);
-        float clock_offset_ppm = static_cast<float>(get_clock_offset_ppm(elem.first.ori_node));
-        uint64_t tx_timestamp_ps = static_cast<uint64_t>(publish_stamp.toNSec()) * 1000ULL;
-        double toa_ps = static_cast<double>(toa_ns) * 1000.0;
-        double drift_scale = 1.0 + (static_cast<double>(clock_offset_ppm) * 1.0e-6);
-        uint64_t rx_timestamp_ps = tx_timestamp_ps + static_cast<uint64_t>(std::max(0.0, toa_ps * drift_scale));
-        std::vector<int16_t> cir_real;
-        std::vector<int16_t> cir_imag;
-        generate_cir_samples(snr_db, los, cir_real, cir_imag);
-
         // Publish debug topic if enabled
         if (enable_debug_topics_)
         {
@@ -459,33 +452,51 @@ void UwbSimulator::publish_ranges(const ros::TimerEvent& event)
             drone_tx_publishers_[src_drone].publish(uwb_msg);
         }
         
-        nexus_swarm_sim::RawUWBSignal raw_msg;
-        raw_msg.header.stamp = publish_stamp;
-        raw_msg.header.frame_id = "map";
-        raw_msg.src_id = elem.first.ori_node;
-        raw_msg.dst_id = elem.first.end_node;
-        raw_msg.status_code = classify_raw_signal_status(snr_db, los, outlier_injected, sts_quality);
-        raw_msg.valid = is_raw_signal_valid(raw_msg.status_code);
-        raw_msg.toa_ns = toa_ns;
-        raw_msg.tx_timestamp_ps = tx_timestamp_ps;
-        raw_msg.rx_timestamp_ps = rx_timestamp_ps;
-        raw_msg.clock_offset_ppm = clock_offset_ppm;
-        raw_msg.snr_db = snr_db;
-        raw_msg.rssi = rssi;
-        raw_msg.channel = 5;  // DW3000 default channel
-        raw_msg.prf_mhz = 64;     // DW3000 default PRF
-        raw_msg.first_path_power_dbm = fppl;
-        raw_msg.fp_index = static_cast<uint16_t>(std::max(0.0f, std::round(std::min(1023.0f, 18.0f + snr_db * 0.6f))));
-        raw_msg.sts_quality = sts_quality;
-        raw_msg.frame_seq = frame_seq;
-        raw_msg.frame_type = 1;  // Generic ranging frame for simulator integration
-        raw_msg.frame_payload = generate_payload(elem.first.ori_node);
-        raw_msg.cir_real = cir_real;
-        raw_msg.cir_imag = cir_imag;
-        
-        if (drone_raw_signal_publishers_.find(src_drone) != drone_raw_signal_publishers_.end())
+        uint64_t poll_tx_timestamp_ps = static_cast<uint64_t>(publish_stamp.toNSec()) * 1000ULL;
+        double one_way_ps = std::max(0.0, static_cast<double>(toa_ns) * 1000.0);
+        float src_clock_ppm = static_cast<float>(get_clock_offset_ppm(elem.first.ori_node));
+        float dst_clock_ppm = static_cast<float>(get_clock_offset_ppm(elem.first.end_node));
+
+        if (raw_signal_protocol_ == "ds_twr")
         {
-            drone_raw_signal_publishers_[src_drone].publish(raw_msg);
+            uint64_t poll_rx_timestamp_ps =
+                poll_tx_timestamp_ps + static_cast<uint64_t>(one_way_ps * (1.0 + (dst_clock_ppm * 1.0e-6f)));
+            uint64_t resp_tx_timestamp_ps =
+                poll_rx_timestamp_ps + static_cast<uint64_t>(std::max(0.0, ds_twr_resp_delay_us_) * 1.0e6);
+            uint64_t resp_rx_timestamp_ps =
+                resp_tx_timestamp_ps + static_cast<uint64_t>(one_way_ps * (1.0 + (src_clock_ppm * 1.0e-6f)));
+            uint64_t final_tx_timestamp_ps =
+                resp_rx_timestamp_ps + static_cast<uint64_t>(std::max(0.0, ds_twr_final_delay_us_) * 1.0e6);
+            uint64_t final_rx_timestamp_ps =
+                final_tx_timestamp_ps + static_cast<uint64_t>(one_way_ps * (1.0 + (dst_clock_ppm * 1.0e-6f)));
+
+            publish_raw_signal_frame(elem.first.ori_node, elem.first.end_node, publish_stamp,
+                                     nexus_swarm_sim::RawUWBSignal::FRAME_POLL,
+                                     poll_tx_timestamp_ps, poll_rx_timestamp_ps,
+                                     dst_clock_ppm - src_clock_ppm, toa_ns, snr_db, rssi, fppl,
+                                     sts_quality, los, outlier_injected);
+
+            publish_raw_signal_frame(elem.first.end_node, elem.first.ori_node, publish_stamp,
+                                     nexus_swarm_sim::RawUWBSignal::FRAME_RESP,
+                                     resp_tx_timestamp_ps, resp_rx_timestamp_ps,
+                                     src_clock_ppm - dst_clock_ppm, toa_ns, snr_db, rssi, fppl,
+                                     sts_quality, los, outlier_injected);
+
+            publish_raw_signal_frame(elem.first.ori_node, elem.first.end_node, publish_stamp,
+                                     nexus_swarm_sim::RawUWBSignal::FRAME_FINAL,
+                                     final_tx_timestamp_ps, final_rx_timestamp_ps,
+                                     dst_clock_ppm - src_clock_ppm, toa_ns, snr_db, rssi, fppl,
+                                     sts_quality, los, outlier_injected);
+        }
+        else
+        {
+            uint64_t rx_timestamp_ps =
+                poll_tx_timestamp_ps + static_cast<uint64_t>(one_way_ps * (1.0 + (dst_clock_ppm * 1.0e-6f)));
+            publish_raw_signal_frame(elem.first.ori_node, elem.first.end_node, publish_stamp,
+                                     nexus_swarm_sim::RawUWBSignal::FRAME_DATA,
+                                     poll_tx_timestamp_ps, rx_timestamp_ps,
+                                     dst_clock_ppm - src_clock_ppm, toa_ns, snr_db, rssi, fppl,
+                                     sts_quality, los, outlier_injected);
         }
     }
 }
@@ -580,12 +591,62 @@ void UwbSimulator::generate_cir_samples(float snr_db, bool los, std::vector<int1
     }
 }
 
+void UwbSimulator::publish_raw_signal_frame(const std::string& tx_drone,
+                                            const std::string& rx_drone,
+                                            ros::Time publish_stamp,
+                                            uint8_t frame_type,
+                                            uint64_t tx_timestamp_ps,
+                                            uint64_t rx_timestamp_ps,
+                                            float clock_offset_ppm,
+                                            float toa_ns,
+                                            float snr_db,
+                                            float rssi,
+                                            float first_path_power_dbm,
+                                            float sts_quality,
+                                            bool los,
+                                            bool outlier_injected)
+{
+    std::vector<int16_t> cir_real;
+    std::vector<int16_t> cir_imag;
+    generate_cir_samples(snr_db, los, cir_real, cir_imag);
+
+    nexus_swarm_sim::RawUWBSignal raw_msg;
+    raw_msg.header.stamp = publish_stamp;
+    raw_msg.header.frame_id = "map";
+    raw_msg.src_id = tx_drone;
+    raw_msg.dst_id = rx_drone;
+    raw_msg.status_code = classify_raw_signal_status(snr_db, los, outlier_injected, sts_quality);
+    raw_msg.valid = is_raw_signal_valid(raw_msg.status_code);
+    raw_msg.toa_ns = toa_ns;
+    raw_msg.tx_timestamp_ps = tx_timestamp_ps;
+    raw_msg.rx_timestamp_ps = rx_timestamp_ps;
+    raw_msg.clock_offset_ppm = clock_offset_ppm;
+    raw_msg.snr_db = snr_db;
+    raw_msg.rssi = rssi;
+    raw_msg.channel = 5;      // DW3000 default channel
+    raw_msg.prf_mhz = 64;     // DW3000 default PRF
+    raw_msg.first_path_power_dbm = first_path_power_dbm;
+    raw_msg.fp_index = static_cast<uint16_t>(std::max(0.0f, std::round(std::min(1023.0f, 18.0f + snr_db * 0.6f))));
+    raw_msg.sts_quality = sts_quality;
+    raw_msg.frame_seq = next_frame_sequence(tx_drone);
+    raw_msg.frame_type = frame_type;
+    raw_msg.frame_payload = generate_payload(tx_drone);
+    raw_msg.cir_real = cir_real;
+    raw_msg.cir_imag = cir_imag;
+
+    auto it = drone_raw_signal_publishers_.find(tx_drone);
+    if (it != drone_raw_signal_publishers_.end())
+    {
+        it->second.publish(raw_msg);
+    }
+}
+
 void UwbSimulator::generate_raw_signal(double measured_distance_m, double true_distance_m, bool los,
                                        float& toa_ns, float& snr_db, float& rssi)
 {
     /*
-        Generate raw UWB signal parameters (ToA, SNR, RSSI) from true distance.
-        This simulates DW3000 raw measurement output BEFORE signal processing.
+        Generate raw UWB signal parameters (arrival estimate, SNR, RSSI) from true distance.
+        This simulates DW3000-like per-frame low-level measurement output BEFORE higher-level ranging.
         
         DW3000 API provides:
         - dwt_getrangetimestamp(): ToA in nanoseconds
@@ -601,8 +662,8 @@ void UwbSimulator::generate_raw_signal(double measured_distance_m, double true_d
     // Speed of light in meters per nanosecond
     const double C = 0.299792458;  // m/ns
     
-    // Convert true distance to ToA (round-trip time)
-    double measured_toa_ns = 2 * measured_distance_m / C;
+    // Convert distance to one-way arrival time for a single frame exchange
+    double measured_toa_ns = measured_distance_m / C;
     
     // Add ToA measurement noise (DW3000 typical ±1-2ns)
     std::normal_distribution<double> toa_noise_dist(0, 0.8);  // ±0.8ns Gaussian
