@@ -54,6 +54,12 @@ def render_model(template_path, model_name, to_ardupilot_port, from_ardupilot_po
     with open(template_path, "r", encoding="utf-8") as f:
         content = f.read()
 
+    # The ArduPilot Gazebo template declares a xacro XML namespace that is not
+    # used by the generated SDF. Gazebo's parser can mis-handle that extra
+    # namespace on later multi-vehicle spawns, so strip it from the rendered XML.
+    content = content.replace(" xmlns:xacro='http://ros.org/wiki/xacro'", "", 1)
+    content = content.replace(' xmlns:xacro="http://ros.org/wiki/xacro"', "", 1)
+
     content = content.replace('<model name="iris_demo">', f'<model name="{model_name}">', 1)
     content = content.replace("iris_demo::iris::iris/imu_link::imu_sensor", f"{model_name}::iris::iris/imu_link::imu_sensor")
     content = content.replace("<fdm_port_in>9002</fdm_port_in>", f"<fdm_port_in>{from_ardupilot_port}</fdm_port_in>", 1)
