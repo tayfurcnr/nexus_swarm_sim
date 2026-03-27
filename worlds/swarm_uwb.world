@@ -88,5 +88,7 @@
       </linear_velocity>
     </wind>
 
+    <plugin name="nexus_los_raycast_plugin" filename="libnexus_swarm_sim_los_raycast_plugin.so"/>
+
   </world>
 </sdf>

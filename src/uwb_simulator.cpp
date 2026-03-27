@@ -1,6 +1,7 @@
 #include "uwb_simulator.h"
 #include <ctime>
 #include <cstdlib>
+#include <algorithm>
 
 UwbSimulator::UwbSimulator(ros::NodeHandle& nh) : nh_(nh)
 {
@@ -37,8 +38,10 @@ UwbSimulator::UwbSimulator(ros::NodeHandle& nh) : nh_(nh)
     nh_.param<double>("/uwb_simulator/outlier_bias_max_m", outlier_bias_max_m_, 2.0);
     
     nh_.param<bool>("/uwb_simulator/enable_los_check", enable_los_check_, true);
+    nh_.param<bool>("/uwb_simulator/use_gazebo_raycast", use_gazebo_raycast_, true);
     nh_.param<int>("/uwb_simulator/nlos_bias_mm", nlos_bias_mm_, 150);
     nh_.param<double>("/uwb_simulator/nlos_sigma_increase", nlos_sigma_increase_, 1.5);
+    nh_.param<std::string>("/uwb_simulator/los_service_name", los_service_name_, "/uwb_simulator/check_los");
     
     nh_.param<int>("/uwb_simulator/k_neighbors", k_neighbors_, 3);
     nh_.param<double>("/uwb_simulator/hysteresis_enter_m", hysteresis_enter_m_, 80.0);
@@ -50,6 +53,10 @@ UwbSimulator::UwbSimulator(ros::NodeHandle& nh) : nh_(nh)
 
     // Subscribers
     ground_truth_sub_ = nh_.subscribe<gazebo_msgs::ModelStates>(ground_truth_topic_, 1, &UwbSimulator::ground_truth_callback, this);
+    if (use_gazebo_raycast_)
+    {
+        los_service_client_ = nh_.serviceClient<nexus_swarm_sim::CheckLineOfSight>(los_service_name_);
+    }
 
     ROS_INFO_STREAM("[UWBSim] Initialization complete. Discovery prefix: '" << model_prefix_ << "'");
 }
@@ -86,8 +93,23 @@ bool UwbSimulator::should_inject_outlier(double& bias_m)
     return false;
 }
 
-bool UwbSimulator::is_los(const geometry_msgs::Pose& src_pose, const geometry_msgs::Pose& dst_pose)
+bool UwbSimulator::is_los(const std::string& src_id, const std::string& dst_id,
+                         const geometry_msgs::Pose& src_pose, const geometry_msgs::Pose& dst_pose)
 {
+    if (enable_los_check_ && use_gazebo_raycast_ && los_service_client_.isValid())
+    {
+        nexus_swarm_sim::CheckLineOfSight srv;
+        srv.request.src_model = src_id;
+        srv.request.dst_model = dst_id;
+
+        if (!srv.request.src_model.empty() && !srv.request.dst_model.empty() &&
+            srv.request.src_model != srv.request.dst_model &&
+            los_service_client_.call(srv) && srv.response.success)
+        {
+            return srv.response.los;
+        }
+    }
+
     // Improved LOS model: combines altitude difference and 3D distance
     // In a real Gazebo implementation this would use ray casting against collision objects.
     // Here we use a probabilistic approach:
@@ -284,10 +306,10 @@ void UwbSimulator::publish_ranges(const ros::TimerEvent& event)
         v_end = calc_uwb_node_pose(models_gt_[elem.first.end_node],
             uwb_nodes_[elem.first.end_node][elem.first.end_id]);
     
-        double distance_3d = boost::geometry::distance(v_ori, v_end);
+        double true_distance_3d = boost::geometry::distance(v_ori, v_end);
 
         // DW3000-realistic models
-        if (should_dropout(distance_3d))
+        if (should_dropout(true_distance_3d))
         {
             if (debug_verbose_) ROS_WARN_STREAM("[UWBSim] Dropout: " << elem.first);
             continue;  // Skip this measurement
@@ -296,37 +318,45 @@ void UwbSimulator::publish_ranges(const ros::TimerEvent& event)
         // Calculate 2D distance (horizontal plane)
         double dx = v_end.get<0>() - v_ori.get<0>();
         double dy = v_end.get<1>() - v_ori.get<1>();
-        double distance_2d = std::sqrt(dx*dx + dy*dy);
+        double true_distance_2d = std::sqrt(dx*dx + dy*dy);
+        double dz = v_end.get<2>() - v_ori.get<2>();
+        double measured_distance_3d = true_distance_3d;
 
         // Outlier injection
         double outlier_bias = 0.0;
-        if (should_inject_outlier(outlier_bias))
+        bool outlier_injected = should_inject_outlier(outlier_bias);
+        if (outlier_injected)
         {
-            distance_3d += outlier_bias;
+            measured_distance_3d += outlier_bias;
             if (debug_verbose_) ROS_WARN_STREAM("[UWBSim] Outlier injected: " << outlier_bias << "m");
         }
 
         // LOS/NLOS detection
-        bool los = is_los(models_gt_[elem.first.ori_node], models_gt_[elem.first.end_node]);
+        bool los = is_los(elem.first.ori_node, elem.first.end_node,
+                          models_gt_[elem.first.ori_node], models_gt_[elem.first.end_node]);
         double sigma = 0.1;  // Base uncertainty
         uint16_t nlos_bias_mm = 0;
         
         if (!los)
         {
             nlos_bias_mm = static_cast<uint16_t>(nlos_bias_mm_);
-            distance_3d += nlos_bias_mm / 1000.0;  // Add bias
+            measured_distance_3d += nlos_bias_mm / 1000.0;  // Add excess path length bias
             sigma *= nlos_sigma_increase_;  // Increase uncertainty
         }
 
+        std::normal_distribution<double> range_noise_dist(0.0, sigma);
+        measured_distance_3d = std::max(0.0, measured_distance_3d + range_noise_dist(rng_));
+        double measured_distance_2d = std::sqrt(std::max(0.0, measured_distance_3d * measured_distance_3d - dz * dz));
+
         // Neighbor filtering with K-nearest
-        if (!should_range_neighbor(elem.first.ori_node, elem.first.end_node, distance_3d))
+        if (!should_range_neighbor(elem.first.ori_node, elem.first.end_node, measured_distance_3d))
         {
             if (debug_verbose_) ROS_WARN_STREAM("[UWBSim] Neighbor filtered out (distance threshold)");
             continue;  // Skip if not a tracked neighbor
         }
 
         // Update neighbor tracking
-        update_neighbor_tracking(elem.first.ori_node, elem.first.end_node, distance_3d);
+        update_neighbor_tracking(elem.first.ori_node, elem.first.end_node, measured_distance_3d);
 
         // Scheduling check
         if (!should_publish_measurement(elem.first))
@@ -334,40 +364,54 @@ void UwbSimulator::publish_ranges(const ros::TimerEvent& event)
             continue;  // Skip this publish cycle (rate throttling)
         }
 
+        ros::Time publish_stamp = ros::Time::now();
+        if (jitter_enabled_)
+        {
+            publish_stamp -= ros::Duration(sample_latency() / 1000.0);
+        }
+
+        float toa_ns = 0.0f;
+        float snr_db = 0.0f;
+        float rssi = 0.0f;
+        generate_raw_signal(measured_distance_3d, true_distance_3d, los, toa_ns, snr_db, rssi);
+        float quality = estimate_quality(snr_db, los, outlier_injected);
+        float fppl = estimate_fppl(rssi, los);
+        float sts_quality = estimate_sts_quality(snr_db, los, outlier_injected);
+
         // Publish debug topic if enabled
         if (enable_debug_topics_)
         {
             if (publish_as_float_)
             {
                 std_msgs::Float64 f = std_msgs::Float64();
-                f.data = distance_3d;
+                f.data = measured_distance_3d;
                 elem.second.publish(f);
             }
             else 
             {
                 sensor_msgs::Range r = sensor_msgs::Range();
-                r.header.stamp = ros::Time::now();
+                r.header.stamp = publish_stamp;
                 r.radiation_type = 2;
                 r.field_of_view = 0;
                 r.min_range = 0.2;
                 r.max_range = 42;
-                r.range = distance_3d;
+                r.range = measured_distance_3d;
                 elem.second.publish(r);
             }
         }
 
         // Publish unified UwbRange message
         nexus_swarm_sim::UwbRange uwb_msg;
-        uwb_msg.header.stamp = ros::Time::now();
+        uwb_msg.header.stamp = publish_stamp;
         uwb_msg.header.frame_id = "map";
         uwb_msg.src_id = elem.first.ori_node;
         uwb_msg.dst_id = elem.first.end_node;
-        uwb_msg.distance_3d = distance_3d;
-        uwb_msg.distance_2d = distance_2d;
+        uwb_msg.distance_3d = measured_distance_3d;
+        uwb_msg.distance_2d = measured_distance_2d;
         uwb_msg.sigma_m = sigma;
         uwb_msg.los = los;
-        uwb_msg.rssi = los ? -75.0f : -85.0f;  // Stronger signal for LOS
-        uwb_msg.quality = los ? 0.9f : 0.7f;
+        uwb_msg.rssi = rssi;
+        uwb_msg.quality = quality;
         uwb_msg.nlos_bias_mm = nlos_bias_mm;
         uwb_msg.fp_index = 0.0f;
         
@@ -382,15 +426,8 @@ void UwbSimulator::publish_ranges(const ros::TimerEvent& event)
             drone_tx_publishers_[src_drone].publish(uwb_msg);
         }
         
-        // Generate and publish raw signal (for signal processing algorithms)
-        // This is the low-level measurement BEFORE distance extraction
-        float toa_ns = 0.0f;
-        float snr_db = 0.0f;
-        float rssi = 0.0f;
-        generate_raw_signal(distance_3d, los, toa_ns, snr_db, rssi);
-        
         nexus_swarm_sim::RawUWBSignal raw_msg;
-        raw_msg.header.stamp = ros::Time::now();
+        raw_msg.header.stamp = publish_stamp;
         raw_msg.header.frame_id = "map";
         raw_msg.src_id = elem.first.ori_node;
         raw_msg.dst_id = elem.first.end_node;
@@ -399,11 +436,12 @@ void UwbSimulator::publish_ranges(const ros::TimerEvent& event)
         raw_msg.rssi = rssi;
         raw_msg.channel = 5;  // DW3000 default channel
         raw_msg.prf = 64;     // DW3000 default PRF
-        raw_msg.fppl = los ? -50.0f : -60.0f;
-        raw_msg.fp_index = 20;  // Example
-        raw_msg.n_paths = 1;
-        raw_msg.sts_quality = los ? 0.95f : 0.7f;
-        raw_msg.true_distance_m = distance_3d;  // DEBUG ONLY
+        raw_msg.fppl = fppl;
+        raw_msg.fp_index = static_cast<uint16_t>(std::max(0.0f, std::round(std::min(1023.0f, 18.0f + snr_db * 0.6f))));
+        raw_msg.n_paths = static_cast<uint8_t>(los ? 1 : 2 + std::min(4, static_cast<int>(std::round(std::abs(dz)))));
+        raw_msg.sts_quality = sts_quality;
+        raw_msg.measured_distance_m = measured_distance_3d;
+        raw_msg.true_distance_m = true_distance_3d;
         
         if (drone_raw_signal_publishers_.find(src_drone) != drone_raw_signal_publishers_.end())
         {
@@ -447,7 +485,7 @@ std::vector<uint8_t> UwbSimulator::generate_payload(const std::string& src_id)
     return payload;
 }
 
-void UwbSimulator::generate_raw_signal(double true_distance_m, bool los,
+void UwbSimulator::generate_raw_signal(double measured_distance_m, double true_distance_m, bool los,
                                        float& toa_ns, float& snr_db, float& rssi)
 {
     /*
@@ -469,7 +507,7 @@ void UwbSimulator::generate_raw_signal(double true_distance_m, bool los,
     const double C = 0.299792458;  // m/ns
     
     // Convert true distance to ToA (round-trip time)
-    double true_toa_ns = 2 * true_distance_m / C;
+    double measured_toa_ns = 2 * measured_distance_m / C;
     
     // Add ToA measurement noise (DW3000 typical ±1-2ns)
     std::normal_distribution<double> toa_noise_dist(0, 0.8);  // ±0.8ns Gaussian
@@ -478,7 +516,7 @@ void UwbSimulator::generate_raw_signal(double true_distance_m, bool los,
     // ToA might also have systematic bias (rare, but real)
     // double toa_bias_ns = 0.5;  // Constant bias
     
-    toa_ns = static_cast<float>(true_toa_ns + toa_error_ns);
+    toa_ns = static_cast<float>(measured_toa_ns + toa_error_ns);
     
     // SNR calculation (path loss + noise)
     // Free space path loss: SNR = Pt - Pl - Pn
@@ -512,4 +550,25 @@ void UwbSimulator::generate_raw_signal(double true_distance_m, bool los,
     
     rssi = static_cast<float>(mean_rssi + rssi_error);
     rssi = std::max(-120.0f, std::min(-40.0f, rssi));  // Clamp [-120, -40]
+}
+
+float UwbSimulator::estimate_quality(float snr_db, bool los, bool outlier_injected) const
+{
+    float normalized_snr = std::max(0.0f, std::min(1.0f, (snr_db + 5.0f) / 25.0f));
+    float quality = normalized_snr * (los ? 1.0f : 0.78f);
+    if (outlier_injected) quality *= 0.65f;
+    return std::max(0.0f, std::min(1.0f, quality));
+}
+
+float UwbSimulator::estimate_fppl(float rssi_dbm, bool los) const
+{
+    float first_path_penalty = los ? 2.0f : 6.0f;
+    return rssi_dbm - first_path_penalty;
+}
+
+float UwbSimulator::estimate_sts_quality(float snr_db, bool los, bool outlier_injected) const
+{
+    float sts_quality = estimate_quality(snr_db, los, outlier_injected);
+    if (!los) sts_quality *= 0.92f;
+    return std::max(0.0f, std::min(1.0f, sts_quality));
 }

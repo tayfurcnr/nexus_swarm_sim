@@ -19,6 +19,7 @@
 #include <std_msgs/Float64.h>
 
 #include <sensor_msgs/Range.h>
+#include <ros/service_client.h>
 
 #include <geometry_msgs/Pose.h>
 
@@ -27,6 +28,7 @@
 // Custom UWB messages
 #include <nexus_swarm_sim/UwbRange.h>
 #include <nexus_swarm_sim/RawUWBSignal.h>
+#include <nexus_swarm_sim/CheckLineOfSight.h>
 
 /*
     Struct to store a range to be calculated
@@ -163,8 +165,11 @@ class UwbSimulator
         
         // LOS/NLOS detection
         bool enable_los_check_;
+        bool use_gazebo_raycast_;
         int nlos_bias_mm_;
         double nlos_sigma_increase_;
+        std::string los_service_name_;
+        ros::ServiceClient los_service_client_;
         
         // K-nearest neighbor selection
         int k_neighbors_;
@@ -209,7 +214,8 @@ class UwbSimulator
         bool should_inject_outlier(double& bias_m);
         
         // LOS/NLOS detection via raycast
-        bool is_los(const geometry_msgs::Pose& src_pose, const geometry_msgs::Pose& dst_pose);
+        bool is_los(const std::string& src_id, const std::string& dst_id,
+                    const geometry_msgs::Pose& src_pose, const geometry_msgs::Pose& dst_pose);
         
         // K-nearest neighbor update and filtering
         bool should_range_neighbor(const std::string& src_id, const std::string& dst_id, double distance_m);
@@ -222,8 +228,12 @@ class UwbSimulator
         std::vector<uint8_t> generate_payload(const std::string& src_id);
         
         // Raw signal generation (low-level ToA-based measurement)
-        void generate_raw_signal(double true_distance_m, bool los, 
+        void generate_raw_signal(double measured_distance_m, double true_distance_m, bool los, 
                                  float& toa_ns, float& snr_db, float& rssi);
+
+        float estimate_quality(float snr_db, bool los, bool outlier_injected) const;
+        float estimate_fppl(float rssi_dbm, bool los) const;
+        float estimate_sts_quality(float snr_db, bool los, bool outlier_injected) const;
 
         // Utils
         boost::geometry::model::point<double, 3, boost::geometry::cs::cartesian> calc_uwb_node_pose(

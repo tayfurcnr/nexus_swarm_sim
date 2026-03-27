@@ -29,6 +29,8 @@ The repository supports two practical operating styles:
 - ArduPilot SITL integration for vehicle-level flight simulation
 - MAVROS bridges under per-vehicle namespaces
 - Dynamic UWB simulation driven by `/gazebo/model_states`
+- LOS-aware UWB ranging with Gazebo ray casting against world geometry
+- Rich per-link UWB outputs including processed range and raw signal telemetry
 - Lightweight launch modes for staged validation and dependency isolation
 
 ## Quick Start
@@ -83,7 +85,8 @@ Recommended validation order for a new machine:
 | Gazebo | world loading, model spawning, physics, and visualization |
 | ArduPilot SITL | per-vehicle flight controller simulation |
 | MAVROS | ROS bridge for vehicle communication |
-| UWB simulator | inter-vehicle ranging and signal simulation |
+| UWB simulator | inter-vehicle ranging, LOS/NLOS classification, and signal simulation |
+| LOS raycast plugin | Gazebo-backed `/uwb_simulator/check_los` service for line-of-sight checks |
 
 Default naming:
 
@@ -118,3 +121,6 @@ Use the repository documents by purpose:
 - The setup script installs ArduPilot into `~/ardupilot` and `ardupilot_gazebo` into `~/ardupilot_gazebo`.
 - The package itself is expected to live inside a catkin workspace such as `~/nexus_swarm_sim_ws/src/nexus_swarm_sim`.
 - On a new machine, prefer the setup script unless you intentionally want a non-SITL workflow.
+- `swarm_uwb.world` loads a Gazebo world plugin that exposes `/uwb_simulator/check_los`; when `/uwb_simulator/use_gazebo_raycast:=true`, UWB LOS decisions come from Gazebo ray casting instead of only the probabilistic fallback.
+- UWB outputs are available on per-vehicle topics such as `/<drone>/uwb/range` and `/<drone>/uwb/raw_signal`, with LOS state included in the published messages.
+- If a previous Gazebo instance did not exit cleanly, kill stale `gzserver` and `gzclient` processes before relaunching to avoid port binding conflicts.

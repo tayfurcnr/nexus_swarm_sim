@@ -1,10 +1,40 @@
 #!/usr/bin/env python3
-import rospy
-import subprocess
-import time
 import os
 import signal
+import subprocess
 import sys
+import time
+
+import rospy
+from gazebo_msgs.srv import SpawnModel
+from geometry_msgs.msg import Pose
+
+
+def spawn_gazebo_model(drone_id, model_file, x, y, z):
+    if not model_file:
+        raise ValueError("gazebo_model_file is empty")
+    if not os.path.isfile(model_file):
+        raise FileNotFoundError(f"Gazebo model file not found: {model_file}")
+
+    with open(model_file, "r", encoding="utf-8") as handle:
+        model_xml = handle.read()
+
+    pose = Pose()
+    pose.position.x = x
+    pose.position.y = y
+    pose.position.z = z
+    pose.orientation.w = 1.0
+
+    service_name = "/gazebo/spawn_sdf_model"
+    rospy.loginfo("Waiting for %s to spawn %s", service_name, drone_id)
+    rospy.wait_for_service(service_name, timeout=30.0)
+    spawn_model = rospy.ServiceProxy(service_name, SpawnModel)
+
+    response = spawn_model(drone_id, model_xml, f"/{drone_id}", pose, "world")
+    if not response.success:
+        raise RuntimeError(f"Failed to spawn {drone_id}: {response.status_message}")
+
+    rospy.loginfo("Spawned %s successfully via %s", drone_id, service_name)
 
 
 def main():
@@ -62,16 +92,15 @@ def main():
                 f"z:={z}",
             ]
         elif spawn_mode == "gazebo_model":
-            cmd = [
-                "roslaunch",
-                "nexus_swarm_sim", "spawn_model.launch",
-                f"drone_prefix:={drone_prefix}",
-                f"drone_id:={drone_id}",
-                f"model_file:={gazebo_model_file}",
-                f"x:={x}",
-                f"y:={y}",
-                f"z:={z}",
-            ]
+            try:
+                spawn_gazebo_model(drone_id, gazebo_model_file, x, y, z)
+            except Exception as exc:
+                rospy.logfatal("Failed to spawn %s: %s", drone_id, exc)
+                terminate_children()
+                sys.exit(1)
+            if i + 1 < num_drones:
+                time.sleep(spawn_delay)
+            continue
         else:
             cmd = [
                 "roslaunch",

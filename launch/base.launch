@@ -8,13 +8,20 @@
     <arg name="scenario_config" default="$(find nexus_swarm_sim)/config/uwb_simulator.yaml" />
     <arg name="world_name" default="$(find nexus_swarm_sim)/worlds/swarm_uwb.world" />
     <arg name="ardupilot_gazebo_root" default="$(env HOME)/ardupilot_gazebo" />
+    <arg name="inherit_gazebo_env" default="false" />
     <arg name="dashboard" default="false" />
     <arg name="dashboard_host" default="0.0.0.0" />
     <arg name="dashboard_port" default="8787" />
 
-    <env name="GAZEBO_MODEL_PATH" value="$(eval arg('ardupilot_gazebo_root') + '/models:' + optenv('GAZEBO_MODEL_PATH', ''))" />
-    <env name="GAZEBO_RESOURCE_PATH" value="$(eval arg('ardupilot_gazebo_root') + '/worlds:' + optenv('GAZEBO_RESOURCE_PATH', ''))" />
-    <env name="GAZEBO_PLUGIN_PATH" value="$(eval arg('ardupilot_gazebo_root') + '/build:' + optenv('GAZEBO_PLUGIN_PATH', ''))" />
+    <env
+        name="GAZEBO_MODEL_PATH"
+        value="$(eval arg('ardupilot_gazebo_root') + '/models' + (':' + optenv('GAZEBO_MODEL_PATH', '') if arg('inherit_gazebo_env') == 'true' and optenv('GAZEBO_MODEL_PATH', '') else ''))" />
+    <env
+        name="GAZEBO_RESOURCE_PATH"
+        value="$(eval arg('ardupilot_gazebo_root') + '/worlds' + (':' + optenv('GAZEBO_RESOURCE_PATH', '') if arg('inherit_gazebo_env') == 'true' and optenv('GAZEBO_RESOURCE_PATH', '') else ''))" />
+    <env
+        name="GAZEBO_PLUGIN_PATH"
+        value="$(eval env('CMAKE_PREFIX_PATH').split(':')[0] + '/lib:' + arg('ardupilot_gazebo_root') + '/build' + (':' + optenv('GAZEBO_PLUGIN_PATH', '') if arg('inherit_gazebo_env') == 'true' and optenv('GAZEBO_PLUGIN_PATH', '') else ''))" />
 
     <include file="$(find gazebo_ros)/launch/empty_world.launch">
         <arg name="debug" value="0" />

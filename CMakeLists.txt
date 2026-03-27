@@ -22,6 +22,11 @@ add_message_files(
   RawUWBSignal.msg
 )
 
+add_service_files(
+  FILES
+  CheckLineOfSight.srv
+)
+
 generate_messages(
   DEPENDENCIES
   geometry_msgs
@@ -53,8 +58,19 @@ add_executable(
   src/uwb_simulator.cpp
 )
 
+add_library(
+  ${PROJECT_NAME}_los_raycast_plugin
+  src/los_raycast_plugin.cpp
+)
+
 add_dependencies(
   ${PROJECT_NAME}_uwb_simulator
+  ${${PROJECT_NAME}_EXPORTED_TARGETS}
+  ${catkin_EXPORTED_TARGETS}
+)
+
+add_dependencies(
+  ${PROJECT_NAME}_los_raycast_plugin
   ${${PROJECT_NAME}_EXPORTED_TARGETS}
   ${catkin_EXPORTED_TARGETS}
 )
@@ -68,6 +84,13 @@ target_link_libraries(
   ${PROJECT_NAME}_uwb_simulator
   ${Boost_LIBRARIES}
   ${catkin_LIBRARIES}
+)
+
+target_link_libraries(
+  ${PROJECT_NAME}_los_raycast_plugin
+  ${Boost_LIBRARIES}
+  ${catkin_LIBRARIES}
+  ${GAZEBO_LIBRARIES}
 )
 
 catkin_install_python(PROGRAMS

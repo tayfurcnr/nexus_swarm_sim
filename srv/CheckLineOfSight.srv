@@ -1,0 +1,7 @@
+string src_model
+string dst_model
+---
+bool success
+bool los
+string hit_entity
+float64 hit_distance

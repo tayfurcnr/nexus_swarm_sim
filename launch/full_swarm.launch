@@ -3,7 +3,7 @@
     <arg name="use_sim_time" default="true" />
     <arg name="gui" default="true" />
     <arg name="headless" default="false" />
-    <arg name="num_drones" default="12" />
+    <arg name="num_drones" default="3" />
     <arg name="vehicle_model" default="iris" />
     <arg name="drone_prefix" default="nexus" />
     <arg name="spawn_delay" default="2.0" />

@@ -43,6 +43,7 @@ Purpose:
 - launches Gazebo with the selected world
 - starts the UWB simulator
 - optionally starts the dashboard
+- exposes LOS raycast support when the selected world includes the LOS plugin
 
 Use this when:
 - you are composing a custom launch flow
@@ -54,6 +55,7 @@ Purpose:
 - lightweight smoke-test mode
 - spawns simple dummy models from this repository
 - does not require ArduPilot or MAVROS
+- still exercises the UWB stack, including Gazebo LOS raycast checks in the default world
 
 Use this when:
 - you want to validate Gazebo and the UWB stack first
@@ -103,6 +105,7 @@ roslaunch nexus_swarm_sim single_vehicle_sitl.launch
 Purpose:
 - full multi-vehicle ArduPilot mode
 - launches Gazebo, multiple SITL instances, MAVROS bridges, and the UWB simulator
+- uses the default `swarm_uwb.world`, which loads the LOS raycast plugin for UWB line-of-sight queries
 
 Use this when:
 - ArduPilot and `ardupilot_gazebo` are already installed
@@ -135,7 +138,9 @@ Common defaults:
 - `vehicle_model:=iris`
 - `drone_prefix:=nexus`
 - `num_drones:=3` for lightweight modes
-- `num_drones:=12` in `full_swarm.launch`
+- `num_drones:=3` in `full_swarm.launch`
+- `world_name:=$(find nexus_swarm_sim)/worlds/swarm_uwb.world`
+- `use_gazebo_raycast:=true` in the UWB simulator unless overridden in config
 
 Dashboard defaults:
 - `full_swarm.launch`: `dashboard:=true`
@@ -150,6 +155,9 @@ Generated vehicle names follow the pattern:
 - `nexus2`
 - `nexus3`
 - ...
+
+Operational note:
+- If Gazebo was left running from an earlier session, stop stale `gzserver` and `gzclient` processes before relaunching or Gazebo master port binding can fail.
 
 ## Recommended Usage Sequence
 

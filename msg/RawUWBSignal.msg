@@ -21,8 +21,9 @@ uint16 fp_index                # First Path Index (sample number)
 uint8 n_paths                  # Number of multipath components detected
 float32 sts_quality            # STS (Scrambled Timestamp) quality (0-1)
 
-# Ground Truth (DEBUG ONLY - remove in real system)
-float32 true_distance_m        # True distance (Gazebo ground truth, for validation)
+# Distance references
+float32 measured_distance_m    # Range implied by the noisy raw signal / channel effects
+float32 true_distance_m        # Geometric ground truth distance (Gazebo), for validation only
 
 # Raw Signal Samples (optional - high bandwidth)
 float32[] signal_samples       # I/Q samples or amplitude envelope (optional)
