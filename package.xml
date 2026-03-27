@@ -4,7 +4,7 @@
   <version>0.0.0</version>
   <description>Multi-vehicle Gazebo and ArduPilot simulation platform with optional UWB ranging</description>
 
-  <maintainer email="tayfurcnr@gmail.com">Tayfur Cinar</maintainer>
+  <maintainer email="tayfurcnr@gmail.com">Tayfur Çınar</maintainer>
   <license>MIT</license>
 
   <buildtool_depend>catkin</buildtool_depend>

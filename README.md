@@ -21,6 +21,7 @@ The repository supports two practical operating styles:
 - [Runtime Summary](#runtime-summary)
 - [Requirements](#requirements)
 - [Documentation Map](#documentation-map)
+- [Developer](#developer)
 - [Operational Notes](#operational-notes)
 
 ## Key Capabilities
@@ -119,6 +120,11 @@ Use the repository documents by purpose:
 - [docs/contracts/UWB_INTERFACE_CONTRACT.md](docs/contracts/UWB_INTERFACE_CONTRACT.md): UWB topic, message, and timestamp contract
 - [docs/planning/ROADMAP.md](docs/planning/ROADMAP.md): phased roadmap for realism and sim-to-real readiness
 - [setup_ardupilot_noetic.sh](setup_ardupilot_noetic.sh): automated setup for the full ArduPilot-backed environment
+
+## Developer
+
+- Maintainer: Tayfur Çınar
+- Contact: `tayfurcnr@gmail.com`
 
 ## Operational Notes
 
