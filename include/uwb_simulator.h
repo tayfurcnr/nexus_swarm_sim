@@ -134,6 +134,8 @@ class UwbSimulator
         std::vector<std::string> model_names_;
         std::map<std::string, std::vector<std::vector<double>>> uwb_nodes_;
         std::map<std::string, std::vector<std::string>> uwb_node_names_;
+        std::vector<double> default_uwb_node_position_;
+        std::string default_uwb_node_name_;
         std::vector<std::string> uwb_ranges_param_;
         std::map<std::string, std::string> uwb_ranges_;
 

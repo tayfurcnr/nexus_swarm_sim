@@ -15,6 +15,15 @@ UwbSimulator::UwbSimulator(ros::NodeHandle& nh) : nh_(nh)
     nh_.param<std::string>("/uwb_simulator/pub_topic_prefix", pub_topic_prefix_, "/uwb");
     nh_.param<std::string>("/drone_prefix", model_prefix_, std::string("nexus"));
     nh_.param<std::string>("/uwb_simulator/model_prefix", model_prefix_, model_prefix_);
+    nh_.param<std::string>("/uwb_simulator/uwb_node/id", default_uwb_node_name_, std::string("uwb"));
+
+    double default_uwb_x = 0.0;
+    double default_uwb_y = 0.0;
+    double default_uwb_z = 0.0;
+    nh_.param<double>("/uwb_simulator/uwb_node/position/x", default_uwb_x, 0.0);
+    nh_.param<double>("/uwb_simulator/uwb_node/position/y", default_uwb_y, 0.0);
+    nh_.param<double>("/uwb_simulator/uwb_node/position/z", default_uwb_z, 0.0);
+    default_uwb_node_position_ = {default_uwb_x, default_uwb_y, default_uwb_z};
 
     // UWB global params
     nh_.param<double>("/uwb_simulator/duty_cycle", duty_cycle_, 1);
@@ -227,11 +236,11 @@ void UwbSimulator::check_for_new_models(const std::vector<std::string>& models)
         nts.drone_id = model;
         neighbor_tracking_[model] = nts;
 
-        // Initialize UWB node positions for this model (default to center if not in YAML)
+        // Initialize a single configurable UWB node for this model.
         if (uwb_nodes_.find(model) == uwb_nodes_.end())
         {
-            uwb_nodes_[model] = { {0.0, 0.0, 0.0} };
-            uwb_node_names_[model] = { "uwb_tx" };
+            uwb_nodes_[model] = { default_uwb_node_position_ };
+            uwb_node_names_[model] = { default_uwb_node_name_ };
         }
 
         // Create publishers for this new drone

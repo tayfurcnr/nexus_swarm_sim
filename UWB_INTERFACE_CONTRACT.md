@@ -20,6 +20,7 @@ This contract covers:
 - `nexus_swarm_sim/UwbRange`
 - `nexus_swarm_sim/RawUWBSignal`
 - per-vehicle UWB topic naming
+- the current single-node-per-vehicle assumption
 - semantic meaning of identifiers, timestamps, and fields
 - separation between production-like fields and simulation-only fields
 
@@ -87,6 +88,28 @@ It is intended for:
 It is the better starting point for future sim-to-real interface evolution.
 It should avoid simulator-truth and processed-range fields and instead carry hardware-aligned low-level signal metrics.
 
+## Current Mounting Assumption
+
+The current simulator assumption is:
+
+- one UWB node per vehicle
+- configured through `/uwb_simulator/uwb_node`
+- mounted at a fixed offset relative to the vehicle body
+
+Current default config shape:
+
+```yaml
+uwb_node:
+  id: "uwb"
+  position:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+```
+
+The `id` is currently descriptive only.
+Published message identifiers remain vehicle-level (`nexus1`, `nexus2`, ...), not node-level.
+
 ## Identifier Contract
 
 ### `src_id`
@@ -97,13 +120,11 @@ Current convention:
 
 - vehicle namespace string such as `nexus1`, `nexus2`, `iris0`, etc.
 
-Current limitation:
+Current single-node interpretation:
 
-- identifiers are vehicle-level, not yet fully node-level in the published contract
-
-Planned evolution:
-
-- future topology support may require node-aware identifiers or additional node fields
+- each vehicle currently has one configured onboard UWB node
+- `src_id` names the vehicle that owns that node
+- the node mount offset affects geometry internally, but not the published identifier
 
 ### `dst_id`
 

@@ -9,6 +9,14 @@ model_prefix: "nexus"            # Prefix the UWB simulator discovers from /gaze
 ground_truth_topic: "/gazebo/model_states"
 pub_topic_prefix: "/uwb"
 
+# Single onboard UWB node mount
+uwb_node:
+  id: "uwb"
+  position:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+
 # Global UWB parameters
 max_twr_freq: 100
 duty_cycle: 1.0
