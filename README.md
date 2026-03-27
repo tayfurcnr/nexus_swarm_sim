@@ -114,6 +114,10 @@ Use the repository documents by purpose:
 
 - [INSTALL.md](INSTALL.md): complete installation flow, dependency recovery, validation checks, and bringup order
 - [LAUNCHES.md](launch/LAUNCHES.md): launch entry points, examples, defaults, and intended usage
+- [docs/README.md](docs/README.md): top-level documentation index for architecture, contracts, planning, and hardware references
+- [docs/architecture/PACKAGE_SCOPE.md](docs/architecture/PACKAGE_SCOPE.md): package ownership, architectural boundary, and explicit non-goals
+- [docs/contracts/UWB_INTERFACE_CONTRACT.md](docs/contracts/UWB_INTERFACE_CONTRACT.md): UWB topic, message, and timestamp contract
+- [docs/planning/ROADMAP.md](docs/planning/ROADMAP.md): phased roadmap for realism and sim-to-real readiness
 - [setup_ardupilot_noetic.sh](setup_ardupilot_noetic.sh): automated setup for the full ArduPilot-backed environment
 
 ## Operational Notes

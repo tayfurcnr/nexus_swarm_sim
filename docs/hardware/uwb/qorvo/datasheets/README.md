@@ -3,6 +3,18 @@
 Store vendor reference documents here for hardware that informs the simulator's
 interface and signal-model design.
 
+## Current vendor scope
+
+- Vendor: Qorvo
+- UWB family: DW3000 / DWM3000
+
+This directory is intentionally nested under `docs/hardware/uwb/qorvo/` so that
+future hardware from other vendors or product families can be stored without
+mixing unrelated references. A recommended expansion pattern is:
+
+- `docs/hardware/uwb/<vendor>/datasheets/`
+- `docs/hardware/uwb/<vendor>/notes/`
+
 ## Current references in this folder
 
 - `DW3000-User-Manual.pdf`
@@ -49,7 +61,7 @@ interface and signal-model design.
   need to be summarized.
 - Do not treat documents in this folder as implementation truth by default; any
   design decision taken from them should still be reflected in package docs such
-  as `UWB_INTERFACE_CONTRACT.md`.
+  as `docs/contracts/UWB_INTERFACE_CONTRACT.md`.
 - For this package, the most important questions are:
   - Which fields are realistic in `RawUWBSignal`?
   - Which diagnostics are chip-level vs. driver-derived?
