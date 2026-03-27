@@ -42,6 +42,7 @@ float32 sts_quality            # STS-based RX timestamp confidence metric (0-1, 
 
 # Frame Content
 uint16 frame_seq               # Simulated frame sequence number
+uint16 exchange_seq            # Exchange identifier shared by POLL/RESP/FINAL frames in one DS-TWR transaction
 uint8 frame_type               # FRAME_* identifier for the simulated UWB frame
 uint8[] frame_payload          # Raw UWB frame payload bytes (not parsed / not application-decoded)
 int16[] cir_real               # Simulated CIR real samples; should match cir_imag length and may be empty

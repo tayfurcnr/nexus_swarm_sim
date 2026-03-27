@@ -26,6 +26,8 @@ publish_as_float: false
 raw_signal_protocol: "ds_twr"   # "ds_twr" or "single"
 ds_twr_resp_delay_us: 300.0     # responder processing delay
 ds_twr_final_delay_us: 350.0    # initiator processing delay before FINAL
+ds_twr_resp_missing_probability: 0.0   # probability that a RESP frame is missing from an exchange
+ds_twr_final_missing_probability: 0.0  # probability that a FINAL frame is missing from an exchange
 
 # Update rate scheduling
 update_rate_hz: 15

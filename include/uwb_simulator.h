@@ -152,6 +152,8 @@ class UwbSimulator
         std::string raw_signal_protocol_;
         double ds_twr_resp_delay_us_;
         double ds_twr_final_delay_us_;
+        double ds_twr_resp_missing_probability_;
+        double ds_twr_final_missing_probability_;
         
         // Dropout model
         double p_drop_base_;
@@ -207,6 +209,7 @@ class UwbSimulator
         std::map<std::string, std::vector<uint8_t>> drone_tx_payload_cache_;
         std::map<std::string, uint16_t> drone_frame_sequence_counters_;
         std::map<std::string, double> drone_clock_offsets_ppm_;
+        std::map<std::string, uint16_t> pair_exchange_sequence_counters_;
 
         // Topic callbacks
         void ground_truth_callback(const gazebo_msgs::ModelStates::ConstPtr& msg);
@@ -238,12 +241,15 @@ class UwbSimulator
         // Payload generation (custom data from sender)
         std::vector<uint8_t> generate_payload(const std::string& src_id);
         uint16_t next_frame_sequence(const std::string& src_id);
+        uint16_t next_exchange_sequence(const std::string& src_id, const std::string& dst_id);
         double get_clock_offset_ppm(const std::string& drone_id);
+        bool should_emit_ds_twr_frame(double missing_probability);
         void generate_cir_samples(float snr_db, bool los, std::vector<int16_t>& cir_real, std::vector<int16_t>& cir_imag);
         void publish_raw_signal_frame(const std::string& tx_drone,
                                       const std::string& rx_drone,
                                       ros::Time publish_stamp,
                                       uint8_t frame_type,
+                                      uint16_t exchange_seq,
                                       uint64_t tx_timestamp_ps,
                                       uint64_t rx_timestamp_ps,
                                       float clock_offset_ppm,

@@ -51,6 +51,11 @@ The current frame progression is:
 - `FRAME_RESP`
 - `FRAME_FINAL`
 
+The simulator can also emit incomplete DS-TWR exchanges by omitting `RESP` or
+`FINAL` frames according to configured missing-frame probabilities. Downstream
+packages should interpret the absence of an expected frame within the same
+`exchange_seq` as a timeout or incomplete-exchange condition.
+
 Payload injection inputs are accepted per vehicle:
 
 - `/<vehicle>/uwb/tx/payload`
@@ -107,6 +112,12 @@ The simulator can currently emit either:
 
 The DS-TWR mode is the preferred realism path for downstream packages that want
 to own state-machine and timestamp interpretation logic.
+
+In DS-TWR mode:
+
+- `exchange_seq` groups `POLL`, `RESP`, and `FINAL` frames that belong to one simulated exchange
+- `frame_seq` remains a per-transmitter monotonic counter
+- missing `RESP` / `FINAL` frames represent timeout-like protocol failures instead of synthetic timeout frames
 
 ## Current Mounting Assumption
 
@@ -264,6 +275,7 @@ These fields are meaningful as low-level signal-oriented outputs:
 - `fp_index`
 - `sts_quality`
 - `frame_seq`
+- `exchange_seq`
 - `frame_type`
 - `frame_payload`
 - `cir_real`
@@ -284,7 +296,9 @@ When DS-TWR mode is active:
 - `toa_ns` represents a per-frame one-way arrival estimate
 - `frame_type` indicates where the frame belongs in the simulated exchange
 - `frame_seq` increments per transmitting vehicle, not globally
+- `exchange_seq` is shared by all frames in one simulated DS-TWR transaction
 - each vehicle pair currently has a single simulated exchange owner to avoid mirrored duplicate exchanges
+- missing `RESP` or `FINAL` frames indicate timeout-like or incomplete exchanges
 - `header.stamp` follows the frame TX event time, not only the outer simulator publish cycle
 
 `cir_real` and `cir_imag` are lightweight simulated CIR diagnostics.

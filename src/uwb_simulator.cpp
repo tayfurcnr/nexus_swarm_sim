@@ -37,6 +37,8 @@ UwbSimulator::UwbSimulator(ros::NodeHandle& nh) : nh_(nh)
     nh_.param<std::string>("/uwb_simulator/raw_signal_protocol", raw_signal_protocol_, std::string("ds_twr"));
     nh_.param<double>("/uwb_simulator/ds_twr_resp_delay_us", ds_twr_resp_delay_us_, 300.0);
     nh_.param<double>("/uwb_simulator/ds_twr_final_delay_us", ds_twr_final_delay_us_, 350.0);
+    nh_.param<double>("/uwb_simulator/ds_twr_resp_missing_probability", ds_twr_resp_missing_probability_, 0.0);
+    nh_.param<double>("/uwb_simulator/ds_twr_final_missing_probability", ds_twr_final_missing_probability_, 0.0);
     
     nh_.param<double>("/uwb_simulator/p_drop_base", p_drop_base_, 0.01);
     nh_.param<double>("/uwb_simulator/p_drop_slope", p_drop_slope_, 0.005);
@@ -465,6 +467,9 @@ void UwbSimulator::publish_ranges(const ros::TimerEvent& event)
 
         if (raw_signal_protocol_ == "ds_twr")
         {
+            uint16_t exchange_seq = next_exchange_sequence(elem.first.ori_node, elem.first.end_node);
+            bool emit_resp = should_emit_ds_twr_frame(ds_twr_resp_missing_probability_);
+            bool emit_final = emit_resp && should_emit_ds_twr_frame(ds_twr_final_missing_probability_);
             uint64_t poll_rx_timestamp_ps =
                 poll_tx_timestamp_ps + static_cast<uint64_t>(one_way_ps * (1.0 + (dst_clock_ppm * 1.0e-6f)));
             uint64_t resp_tx_timestamp_ps =
@@ -478,21 +483,30 @@ void UwbSimulator::publish_ranges(const ros::TimerEvent& event)
 
             publish_raw_signal_frame(elem.first.ori_node, elem.first.end_node, publish_stamp,
                                      nexus_swarm_sim::RawUWBSignal::FRAME_POLL,
+                                     exchange_seq,
                                      poll_tx_timestamp_ps, poll_rx_timestamp_ps,
                                      dst_clock_ppm - src_clock_ppm, toa_ns, snr_db, rssi, fppl,
                                      sts_quality, los, outlier_injected);
 
-            publish_raw_signal_frame(elem.first.end_node, elem.first.ori_node, publish_stamp,
-                                     nexus_swarm_sim::RawUWBSignal::FRAME_RESP,
-                                     resp_tx_timestamp_ps, resp_rx_timestamp_ps,
-                                     src_clock_ppm - dst_clock_ppm, toa_ns, snr_db, rssi, fppl,
-                                     sts_quality, los, outlier_injected);
+            if (emit_resp)
+            {
+                publish_raw_signal_frame(elem.first.end_node, elem.first.ori_node, publish_stamp,
+                                         nexus_swarm_sim::RawUWBSignal::FRAME_RESP,
+                                         exchange_seq,
+                                         resp_tx_timestamp_ps, resp_rx_timestamp_ps,
+                                         src_clock_ppm - dst_clock_ppm, toa_ns, snr_db, rssi, fppl,
+                                         sts_quality, los, outlier_injected);
+            }
 
-            publish_raw_signal_frame(elem.first.ori_node, elem.first.end_node, publish_stamp,
-                                     nexus_swarm_sim::RawUWBSignal::FRAME_FINAL,
-                                     final_tx_timestamp_ps, final_rx_timestamp_ps,
-                                     dst_clock_ppm - src_clock_ppm, toa_ns, snr_db, rssi, fppl,
-                                     sts_quality, los, outlier_injected);
+            if (emit_final)
+            {
+                publish_raw_signal_frame(elem.first.ori_node, elem.first.end_node, publish_stamp,
+                                         nexus_swarm_sim::RawUWBSignal::FRAME_FINAL,
+                                         exchange_seq,
+                                         final_tx_timestamp_ps, final_rx_timestamp_ps,
+                                         dst_clock_ppm - src_clock_ppm, toa_ns, snr_db, rssi, fppl,
+                                         sts_quality, los, outlier_injected);
+            }
         }
         else
         {
@@ -500,6 +514,7 @@ void UwbSimulator::publish_ranges(const ros::TimerEvent& event)
                 poll_tx_timestamp_ps + static_cast<uint64_t>(one_way_ps * (1.0 + (dst_clock_ppm * 1.0e-6f)));
             publish_raw_signal_frame(elem.first.ori_node, elem.first.end_node, publish_stamp,
                                      nexus_swarm_sim::RawUWBSignal::FRAME_DATA,
+                                     next_exchange_sequence(elem.first.ori_node, elem.first.end_node),
                                      poll_tx_timestamp_ps, rx_timestamp_ps,
                                      dst_clock_ppm - src_clock_ppm, toa_ns, snr_db, rssi, fppl,
                                      sts_quality, los, outlier_injected);
@@ -548,6 +563,17 @@ uint16_t UwbSimulator::next_frame_sequence(const std::string& src_id)
     return current;
 }
 
+uint16_t UwbSimulator::next_exchange_sequence(const std::string& src_id, const std::string& dst_id)
+{
+    const std::string& a = (src_id < dst_id) ? src_id : dst_id;
+    const std::string& b = (src_id < dst_id) ? dst_id : src_id;
+    std::string key = a + "|" + b;
+    auto& counter = pair_exchange_sequence_counters_[key];
+    uint16_t current = counter;
+    counter = static_cast<uint16_t>(counter + 1);
+    return current;
+}
+
 double UwbSimulator::get_clock_offset_ppm(const std::string& drone_id)
 {
     auto it = drone_clock_offsets_ppm_.find(drone_id);
@@ -559,6 +585,12 @@ double UwbSimulator::get_clock_offset_ppm(const std::string& drone_id)
         return offset_ppm;
     }
     return it->second;
+}
+
+bool UwbSimulator::should_emit_ds_twr_frame(double missing_probability)
+{
+    double clamped_probability = std::max(0.0, std::min(1.0, missing_probability));
+    return uniform_dist_(rng_) >= clamped_probability;
 }
 
 void UwbSimulator::generate_cir_samples(float snr_db, bool los, std::vector<int16_t>& cir_real, std::vector<int16_t>& cir_imag)
@@ -601,6 +633,7 @@ void UwbSimulator::publish_raw_signal_frame(const std::string& tx_drone,
                                             const std::string& rx_drone,
                                             ros::Time publish_stamp,
                                             uint8_t frame_type,
+                                            uint16_t exchange_seq,
                                             uint64_t tx_timestamp_ps,
                                             uint64_t rx_timestamp_ps,
                                             float clock_offset_ppm,
@@ -637,6 +670,7 @@ void UwbSimulator::publish_raw_signal_frame(const std::string& tx_drone,
     raw_msg.fp_index = static_cast<uint16_t>(std::max(0.0f, std::round(std::min(1023.0f, 18.0f + snr_db * 0.6f))));
     raw_msg.sts_quality = sts_quality;
     raw_msg.frame_seq = next_frame_sequence(tx_drone);
+    raw_msg.exchange_seq = exchange_seq;
     raw_msg.frame_type = frame_type;
     raw_msg.frame_payload = generate_payload(tx_drone);
     raw_msg.cir_real = cir_real;
