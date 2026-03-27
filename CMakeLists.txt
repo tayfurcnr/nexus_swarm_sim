@@ -101,11 +101,8 @@ catkin_install_python(PROGRAMS
   scripts/swarm_dashboard.py
   src/swarm_uwb_monitor.py
   scripts/swarm_launcher.py
-  examples/neighbor_discovery_example.py
-  examples/signal_processor_example.py
-  examples/payload_injector_example.py
-  examples/payload_processor.py
-  examples/raw_dstwr_exchange_consumer_example.py
+  examples/discovery/neighbor_discovery_example.py
+  examples/raw_signal/raw_dstwr_exchange_consumer_example.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
