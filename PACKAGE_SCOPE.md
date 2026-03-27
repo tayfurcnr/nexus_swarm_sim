@@ -10,6 +10,7 @@ Its job is to provide a realistic, repeatable ROS Noetic and Gazebo-based test e
 - ArduPilot SITL integration
 - MAVROS connectivity
 - inter-vehicle UWB sensing simulation
+- hardware-like low-level UWB signal publication
 - LOS/NLOS-aware ranging behavior and related measurement effects
 
 The package exists to let downstream robotics software be developed and validated against a controlled simulated environment before real hardware is available or fully integrated.
@@ -25,6 +26,7 @@ That includes:
 - ArduPilot SITL launch flow for supported scenarios
 - MAVROS bridge launch and namespace organization
 - UWB-related measurement generation
+- publication of low-level UWB-like signal data for downstream processing
 - Gazebo-backed LOS raycast checks and channel-effect simulation
 - simulation-time debug outputs and ground-truth-assisted validation
 - operator-facing runtime utilities such as the built-in dashboard
@@ -37,6 +39,7 @@ This package is not the home of higher-level robotics algorithms.
 
 It should not become the primary implementation location for:
 
+- range extraction from low-level UWB signal outputs
 - TWR solving logic
 - relative localization
 - multi-agent state estimation
@@ -52,8 +55,8 @@ Those belong in separate packages that consume the interfaces exposed by `nexus_
 
 The intended architectural split is:
 
-- `nexus_swarm_sim`: environment, simulated vehicles, simulated UWB measurements, runtime tooling
-- downstream packages: measurement processing, estimation, localization, coordination, and autonomy
+- `nexus_swarm_sim`: environment, simulated vehicles, low-level UWB-like outputs, processed simulator outputs, runtime tooling
+- downstream packages: signal interpretation, range extraction, estimation, localization, coordination, and autonomy
 
 This boundary is intentional. It keeps the simulation package reusable while allowing higher-level algorithms to be transferred later to real hardware with minimal refactoring.
 
@@ -65,6 +68,7 @@ The package should therefore prioritize:
 
 - stable ROS interfaces
 - realistic timing and measurement behavior
+- low-level outputs that are close enough to future hardware-facing data flows
 - reproducible simulation scenarios
 - clear separation between simulated sensor generation and algorithmic interpretation
 - debug visibility without polluting the long-term production interface
@@ -73,6 +77,7 @@ The package should therefore prioritize:
 
 Other packages should be able to:
 
+- subscribe to low-level UWB-like signal topics
 - subscribe to UWB measurement topics
 - consume MAVROS and vehicle namespaces
 - replay logged simulation data
@@ -83,6 +88,7 @@ Other packages should be able to:
 
 The following are explicitly out of scope for this package unless needed strictly for simulator validation:
 
+- final range extraction pipelines derived from low-level UWB signal topics
 - final localization pipelines
 - production swarm decision-making
 - hardware driver implementation for real UWB devices
@@ -95,6 +101,7 @@ The following are explicitly out of scope for this package unless needed strictl
 
 - a stable multi-UAV simulation environment
 - credible UWB measurement behavior for algorithm development
+- a low-level UWB-facing interface that can be mirrored later by real hardware-backed packages
 - enough realism to de-risk later hardware integration
 - enough modularity that higher-level packages remain portable
 
@@ -102,5 +109,5 @@ The following are explicitly out of scope for this package unless needed strictl
 
 `nexus_swarm_sim` is the simulation and sensing substrate of the system.
 
-It should generate the world, the vehicles, and the measurement stream.
-It should not own the algorithms that interpret those measurements into localization, coordination, or autonomy.
+It should generate the world, the vehicles, and the UWB-related output streams.
+It should not own the algorithms that turn those outputs into final ranges, localization, coordination, or autonomy.

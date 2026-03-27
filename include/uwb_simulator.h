@@ -234,6 +234,8 @@ class UwbSimulator
         float estimate_quality(float snr_db, bool los, bool outlier_injected) const;
         float estimate_fppl(float rssi_dbm, bool los) const;
         float estimate_sts_quality(float snr_db, bool los, bool outlier_injected) const;
+        uint8_t classify_raw_signal_status(float snr_db, bool los, bool outlier_injected, float sts_quality) const;
+        bool is_raw_signal_valid(uint8_t status_code) const;
 
         // Utils
         boost::geometry::model::point<double, 3, boost::geometry::cs::cartesian> calc_uwb_node_pose(

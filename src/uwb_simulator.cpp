@@ -431,17 +431,16 @@ void UwbSimulator::publish_ranges(const ros::TimerEvent& event)
         raw_msg.header.frame_id = "map";
         raw_msg.src_id = elem.first.ori_node;
         raw_msg.dst_id = elem.first.end_node;
+        raw_msg.status_code = classify_raw_signal_status(snr_db, los, outlier_injected, sts_quality);
+        raw_msg.valid = is_raw_signal_valid(raw_msg.status_code);
         raw_msg.toa_ns = toa_ns;
         raw_msg.snr_db = snr_db;
         raw_msg.rssi = rssi;
         raw_msg.channel = 5;  // DW3000 default channel
-        raw_msg.prf = 64;     // DW3000 default PRF
-        raw_msg.fppl = fppl;
+        raw_msg.prf_mhz = 64;     // DW3000 default PRF
+        raw_msg.first_path_power_dbm = fppl;
         raw_msg.fp_index = static_cast<uint16_t>(std::max(0.0f, std::round(std::min(1023.0f, 18.0f + snr_db * 0.6f))));
-        raw_msg.n_paths = static_cast<uint8_t>(los ? 1 : 2 + std::min(4, static_cast<int>(std::round(std::abs(dz)))));
         raw_msg.sts_quality = sts_quality;
-        raw_msg.measured_distance_m = measured_distance_3d;
-        raw_msg.true_distance_m = true_distance_3d;
         
         if (drone_raw_signal_publishers_.find(src_drone) != drone_raw_signal_publishers_.end())
         {
@@ -568,7 +567,31 @@ float UwbSimulator::estimate_fppl(float rssi_dbm, bool los) const
 
 float UwbSimulator::estimate_sts_quality(float snr_db, bool los, bool outlier_injected) const
 {
-    float sts_quality = estimate_quality(snr_db, los, outlier_injected);
-    if (!los) sts_quality *= 0.92f;
+    float normalized_snr = std::max(0.0f, std::min(1.0f, (snr_db - 4.0f) / 18.0f));
+    float sts_quality = normalized_snr;
+    if (!los) sts_quality *= 0.82f;
+    if (outlier_injected) sts_quality *= 0.72f;
     return std::max(0.0f, std::min(1.0f, sts_quality));
+}
+
+uint8_t UwbSimulator::classify_raw_signal_status(float snr_db, bool los, bool outlier_injected, float sts_quality) const
+{
+    if (sts_quality < 0.45f) {
+        return nexus_swarm_sim::RawUWBSignal::STATUS_INVALID_STS_QUALITY;
+    }
+    if (outlier_injected) {
+        return nexus_swarm_sim::RawUWBSignal::STATUS_DEGRADED_OUTLIER;
+    }
+    if (snr_db < 8.0f) {
+        return nexus_swarm_sim::RawUWBSignal::STATUS_DEGRADED_WEAK_SIGNAL;
+    }
+    if (!los) {
+        return nexus_swarm_sim::RawUWBSignal::STATUS_DEGRADED_NLOS;
+    }
+    return nexus_swarm_sim::RawUWBSignal::STATUS_OK;
+}
+
+bool UwbSimulator::is_raw_signal_valid(uint8_t status_code) const
+{
+    return status_code != nexus_swarm_sim::RawUWBSignal::STATUS_INVALID_STS_QUALITY;
 }

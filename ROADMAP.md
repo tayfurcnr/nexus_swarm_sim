@@ -11,6 +11,7 @@ The roadmap therefore prioritizes:
 - interface stability
 - simulation realism where it materially affects downstream systems
 - clean boundaries between simulation and algorithm packages
+- low-level signal outputs that can later be mirrored by real UWB-backed packages
 - reproducibility and debugging support
 - migration readiness for future real UWB hardware integration
 
@@ -18,6 +19,7 @@ The roadmap therefore prioritizes:
 
 - Keep environment generation and algorithm interpretation separate.
 - Prefer stable ROS contracts over simulator-specific shortcuts.
+- Treat low-level UWB-like outputs as the preferred sim-to-real boundary where practical.
 - Improve realism first where it changes downstream software behavior.
 - Isolate simulation-only debug data from long-term sensor-facing interfaces.
 - Build toward a workflow where downstream packages can swap simulated and real measurement sources with limited changes.
@@ -31,7 +33,9 @@ Define and stabilize the sensor-facing outputs that downstream packages will rel
 ### Work Items
 
 - Review the current `UwbRange` and `RawUWBSignal` messages against long-term sim-to-real needs.
-- Decide whether the package should continue exposing processed range outputs, lower-level measurement outputs, or both.
+- Keep `RawUWBSignal` aligned with a future hardware-facing low-level interface.
+- Treat `UwbRange` as a processed simulator-side output unless a stronger sim-to-real need emerges for it.
+- Decide which fields in `RawUWBSignal` are acceptable as hardware-aligned signal metrics and which must move to debug-only outputs.
 - Define a clear contract for:
   - topic names
   - namespaces
@@ -47,6 +51,7 @@ Define and stabilize the sensor-facing outputs that downstream packages will rel
 - A clear measurement contract exists and is documented.
 - Message semantics are stable enough for downstream package development.
 - Simulation-specific debug fields are explicitly identified.
+- The preferred future-facing low-level interface is clearly identified.
 
 ## Phase 2: UWB Topology and Sensor Modeling
 
@@ -75,7 +80,7 @@ Make the simulated UWB setup structurally closer to real deployments.
 
 ### Goal
 
-Improve behavioral realism in the parts of the measurement pipeline that affect downstream ranging and estimation logic.
+Improve behavioral realism in the parts of the low-level measurement pipeline that affect downstream ranging and estimation logic.
 
 ### Work Items
 
@@ -88,6 +93,7 @@ Improve behavioral realism in the parts of the measurement pipeline that affect 
 - Add clearer status and validity indicators for downstream consumers.
 - Introduce sequence and diagnostic metadata where useful for correlation and replay.
 - Ensure dropped, delayed, and degraded measurements are observable rather than silently hidden.
+- Prefer expressing these effects first in the low-level UWB-facing interface so downstream packages can own interpretation logic.
 
 ### Exit Criteria
 
@@ -147,6 +153,7 @@ Ensure this package remains a useful precursor to later real-hardware integratio
 ### Work Items
 
 - Align sensor-facing outputs with the intended real-hardware integration path.
+- Keep the future-facing low-level UWB interface close enough to a plausible Raspberry Pi + DW3000 software stack that downstream processing packages can be developed against it now.
 - Minimize assumptions that only hold in Gazebo.
 - Keep real-hardware-only concerns out of this package while preserving compatibility with future drivers.
 - Validate that downstream packages can replace the simulated source with a real source without major architectural changes.
@@ -162,7 +169,7 @@ Ensure this package remains a useful precursor to later real-hardware integratio
 The highest-priority next steps are:
 
 1. Stabilize the UWB measurement contract.
-2. Clarify which outputs are production-like and which are simulation-only.
+2. Clarify that `RawUWBSignal` is the preferred future-facing low-level interface and that `UwbRange` is a processed simulator helper output.
 3. Add explicit node-level topology support.
 4. Strengthen timing and reliability modeling.
 5. Add replay-oriented logging and evaluation support.
@@ -185,6 +192,7 @@ Those belong in downstream packages that consume the interfaces provided here.
 
 - a stable multi-UAV simulation environment
 - credible UWB sensor behavior for downstream development
+- a low-level UWB-facing interface suitable for downstream signal-processing and range-extraction packages
 - clear interfaces that support later hardware migration
 - enough realism to make early algorithm work meaningful
 - enough separation of concerns to prevent simulator lock-in
