@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import sys
 import termios
+import threading
 import time
 
 import rospy
@@ -60,7 +61,7 @@ def configure_ritw_environment(env, enable_console):
         env["SITL_RITW_TERMINAL"] = "xterm -hold -e"
 
 
-def cleanup_console_helpers(instance):
+def cleanup_console_helpers(instance, signals=("-TERM", "-KILL"), pause_s=0.2):
     sitl_tcp_port = 5760 + instance * 10
     mavproxy_out_port = 14550 + instance * 10
     sitl_listen_port = 5501 + instance * 10
@@ -71,10 +72,26 @@ def cleanup_console_helpers(instance):
         f"screen .*tcp:127.0.0.1:{sitl_tcp_port}",
     ]
 
-    for signal_name in ("-TERM", "-KILL"):
+    for signal_name in signals:
         for pattern in patterns:
             subprocess.run(["pkill", signal_name, "-f", pattern], check=False)
-        time.sleep(0.2)
+        time.sleep(pause_s)
+
+
+def relay_filtered_output(stream, suppressed_fragments):
+    if stream is None:
+        return
+    try:
+        for line in iter(stream.readline, ""):
+            if any(fragment in line for fragment in suppressed_fragments):
+                continue
+            sys.stdout.write(line)
+            sys.stdout.flush()
+    finally:
+        try:
+            stream.close()
+        except Exception:
+            pass
 
 
 def main():
@@ -91,9 +108,10 @@ def main():
     use_dir = rospy.get_param("~use_dir", "/tmp/ardupilot_sitl_single_vehicle")
     custom_location = rospy.get_param("~custom_location", "")
     add_param_file = rospy.get_param("~add_param_file", "")
-    enable_mavproxy = bool(rospy.get_param("~enable_mavproxy", False))
+    enable_mavproxy = bool(rospy.get_param("~enable_mavproxy", True))
     mavproxy_console = bool(rospy.get_param("~mavproxy_console", False))
     mavproxy_map = bool(rospy.get_param("~mavproxy_map", False))
+    quiet_mavproxy = bool(rospy.get_param("~quiet_mavproxy", True))
 
     sim_vehicle = os.path.join(ardupilot_root, "Tools", "autotest", "sim_vehicle.py")
     if not os.path.isfile(sim_vehicle):
@@ -123,6 +141,10 @@ def main():
     if not enable_mavproxy:
         cmd.append("--no-mavproxy")
     else:
+        mavproxy_args = ["--retries", "0"]
+        if quiet_mavproxy and not mavproxy_console and not mavproxy_map:
+            mavproxy_args.extend(["--non-interactive", "--no-state"])
+        cmd.extend(["--mavproxy-args", " ".join(mavproxy_args)])
         if mavproxy_console:
             cmd.append("--console")
         if mavproxy_map:
@@ -137,10 +159,55 @@ def main():
     rospy.loginfo("Starting SITL session: %s", " ".join(cmd))
 
     terminal_state = capture_terminal_state()
+    shutdown_lock = threading.Lock()
+    shutdown_started = False
     env = os.environ.copy()
     configure_ritw_environment(env, enable_mavproxy and mavproxy_console)
-    process = subprocess.Popen(cmd, cwd=ardupilot_root, env=env, preexec_fn=os.setsid)
-    rospy.on_shutdown(lambda: terminate_process_tree(process))
+    popen_kwargs = {
+        "cwd": ardupilot_root,
+        "env": env,
+        "preexec_fn": os.setsid,
+    }
+    relay_thread = None
+    if quiet_mavproxy and not mavproxy_console and not mavproxy_map:
+        popen_kwargs.update(
+            {
+                "stdout": subprocess.PIPE,
+                "stderr": subprocess.STDOUT,
+                "text": True,
+                "bufsize": 1,
+            }
+        )
+
+    process = subprocess.Popen(cmd, **popen_kwargs)
+
+    if process.stdout is not None:
+        suppressed_fragments = (
+            "SIM_VEHICLE: MAVProxy exited",
+            "SIM_VEHICLE: Killing tasks",
+            "Clean shutdown impossible, forcing an exit",
+            "Unloading module ",
+        )
+        relay_thread = threading.Thread(
+            target=relay_filtered_output,
+            args=(process.stdout, suppressed_fragments),
+            daemon=True,
+        )
+        relay_thread.start()
+
+    def shutdown_child(sig=signal.SIGTERM):
+        nonlocal shutdown_started
+        with shutdown_lock:
+            if shutdown_started:
+                return False
+            shutdown_started = True
+        # Stop MAVProxy first so it does not keep reconnecting and printing
+        # noise while sim_vehicle / SITL is shutting down.
+        cleanup_console_helpers(instance, signals=("-TERM", "-KILL"), pause_s=0.05)
+        terminate_process_tree(process, sig=sig)
+        return True
+
+    rospy.on_shutdown(shutdown_child)
 
     try:
         while not rospy.is_shutdown():
@@ -149,7 +216,7 @@ def main():
                 return exit_code
             time.sleep(0.2)
 
-        terminate_process_tree(process)
+        shutdown_child()
         deadline = time.monotonic() + 5.0
         while time.monotonic() < deadline:
             exit_code = process.poll()
@@ -159,10 +226,15 @@ def main():
 
         rospy.logwarn("SITL session did not exit after SIGTERM, sending SIGKILL")
         terminate_process_tree(process, sig=signal.SIGKILL)
-        process.wait()
+        try:
+            process.wait(timeout=5.0)
+        except subprocess.TimeoutExpired:
+            rospy.logwarn("SITL session did not exit after SIGKILL within timeout")
         return 0
     finally:
         cleanup_console_helpers(instance)
+        if relay_thread is not None:
+            relay_thread.join(timeout=1.0)
         restore_terminal_state(terminal_state)
 
 

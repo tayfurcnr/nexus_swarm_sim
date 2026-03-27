@@ -15,6 +15,7 @@
     <arg name="enable_mavproxy" default="true" />
     <arg name="mavproxy_console" default="true" />
     <arg name="mavproxy_map" default="false" />
+    <arg name="quiet_mavproxy" default="true" />
     <arg name="dashboard" default="true" />
     <arg name="dashboard_host" default="0.0.0.0" />
     <arg name="dashboard_port" default="8787" />
@@ -45,5 +46,6 @@
         <param name="enable_mavproxy" value="$(arg enable_mavproxy)" />
         <param name="mavproxy_console" value="$(arg mavproxy_console)" />
         <param name="mavproxy_map" value="$(arg mavproxy_map)" />
+        <param name="quiet_mavproxy" value="$(arg quiet_mavproxy)" />
     </node>
 </launch>

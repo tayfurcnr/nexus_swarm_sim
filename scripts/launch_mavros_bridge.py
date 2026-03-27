@@ -5,6 +5,7 @@ import signal
 import socket
 import subprocess
 import sys
+import threading
 import time
 from urllib.parse import urlparse
 
@@ -22,11 +23,11 @@ def wait_for_tcp(host, port, timeout, poll_interval):
     return False
 
 
-def terminate_process_tree(process):
+def terminate_process_tree(process, sig=signal.SIGTERM):
     if process is None or process.poll() is not None:
         return
     try:
-        os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+        os.killpg(os.getpgid(process.pid), sig)
     except ProcessLookupError:
         return
 
@@ -34,7 +35,7 @@ def terminate_process_tree(process):
 def main():
     rospy.init_node("mavros_bridge_launcher", anonymous=False)
 
-    fcu_url = str(rospy.get_param("~fcu_url", "tcp://127.0.0.1:5760")).strip()
+    fcu_url = str(rospy.get_param("~fcu_url", "udp://127.0.0.1:14550@")).strip()
     wait_url = str(rospy.get_param("~wait_url", fcu_url)).strip()
     gcs_url = str(rospy.get_param("~gcs_url", "")).strip()
     tgt_system = int(rospy.get_param("~tgt_system", 1))
@@ -79,7 +80,30 @@ def main():
     ]
 
     process = None
-    rospy.on_shutdown(lambda: terminate_process_tree(process))
+    shutdown_lock = threading.Lock()
+    shutdown_started = False
+
+    def shutdown_bridge():
+        nonlocal shutdown_started
+        with shutdown_lock:
+            if shutdown_started:
+                return
+            shutdown_started = True
+
+        if process is None or process.poll() is not None:
+            return
+
+        terminate_process_tree(process, sig=signal.SIGINT)
+        deadline = time.monotonic() + 5.0
+        while time.monotonic() < deadline:
+            if process.poll() is not None:
+                return
+            time.sleep(0.1)
+
+        rospy.logwarn("MAVROS bridge did not exit after SIGINT, sending SIGTERM")
+        terminate_process_tree(process, sig=signal.SIGTERM)
+
+    rospy.on_shutdown(shutdown_bridge)
 
     while not rospy.is_shutdown():
         rospy.loginfo("Starting MAVROS bridge: %s", " ".join(cmd))

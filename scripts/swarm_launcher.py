@@ -236,9 +236,10 @@ def main():
     spawn_delay = rospy.get_param('~spawn_delay', 2.0)
     gazebo_model_file = rospy.get_param('~gazebo_model_file', '')
     enable_gimbal = rospy.get_param('~enable_gimbal', True)
-    enable_mavproxy = rospy.get_param('~enable_mavproxy', False)
+    enable_mavproxy = rospy.get_param('~enable_mavproxy', True)
     mavproxy_console = rospy.get_param('~mavproxy_console', False)
     mavproxy_map = rospy.get_param('~mavproxy_map', False)
+    quiet_mavproxy = rospy.get_param('~quiet_mavproxy', True)
     formation_mode = _normalize_formation_name(rospy.get_param('~formation_mode', 'fixed'))
     formation = rospy.get_param('~formation', 'line')
     formation_set = rospy.get_param('~formation_set', ['line', 'triangle', 'grid', 'circle', 'v'])
@@ -319,6 +320,7 @@ def main():
                 f"enable_mavproxy:={'true' if enable_mavproxy else 'false'}",
                 f"mavproxy_console:={'true' if mavproxy_console else 'false'}",
                 f"mavproxy_map:={'true' if mavproxy_map else 'false'}",
+                f"quiet_mavproxy:={'true' if quiet_mavproxy else 'false'}",
             ]
 
         proc = subprocess.Popen(cmd, preexec_fn=os.setsid)

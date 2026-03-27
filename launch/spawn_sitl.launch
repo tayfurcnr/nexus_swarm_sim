@@ -18,13 +18,15 @@
     <arg name="rendered_model_file" default="$(eval '/tmp/nexus_swarm_sim/' + arg('drone_id') + '_ardupilot.sdf')" />
     <arg name="enable_gimbal" default="true" />
     <arg name="sitl_add_param_file" default="$(find nexus_swarm_sim)/config/arducopter_gazebo_iris_sim.parm" />
-    <arg name="enable_mavproxy" default="false" />
+    <arg name="enable_mavproxy" default="true" />
     <arg name="mavproxy_console" default="false" />
     <arg name="mavproxy_map" default="false" />
-
-    <arg name="mavros_fcu_url" default="$(eval 'udp://127.0.0.1:' + str(arg('mavproxy_out_port')) + '@' if arg('enable_mavproxy') in [True, 'true', 'True', 1, '1'] else 'tcp://127.0.0.1:' + str(arg('sitl_tcp_port')))" />
+    <arg name="quiet_mavproxy" default="true" />
+    <arg name="mavros_fcu_url" default="$(eval 'udp://127.0.0.1:' + str(arg('mavproxy_out_port')) + '@')" />
 
     <group ns="$(arg drone_id)">
+        <param name="mavros_bridge_launcher/fcu_url" value="$(arg mavros_fcu_url)" />
+
         <node name="model_spawner" pkg="nexus_swarm_sim" type="spawn_ardupilot_model.py" output="screen">
             <param name="template_path" value="$(arg ardupilot_gazebo_root)/models/iris_with_ardupilot/model.sdf" />
             <param name="output_path" value="$(arg rendered_model_file)" />
@@ -49,19 +51,17 @@
             <param name="enable_mavproxy" value="$(arg enable_mavproxy)" />
             <param name="mavproxy_console" value="$(arg mavproxy_console)" />
             <param name="mavproxy_map" value="$(arg mavproxy_map)" />
+            <param name="quiet_mavproxy" value="$(arg quiet_mavproxy)" />
         </node>
 
-        <node name="mavros_bridge_launcher" pkg="nexus_swarm_sim" type="launch_mavros_bridge.py" output="screen">
-            <param name="fcu_url" value="$(arg mavros_fcu_url)" />
-            <param name="wait_url" value="tcp://127.0.0.1:$(arg sitl_tcp_port)" />
-            <param name="gcs_url" value="" />
-            <param name="tgt_system" value="$(arg sys_id)" />
-            <param name="tgt_component" value="1" />
-            <param name="respawn_mavros" value="true" />
-            <param name="wait_timeout" value="90.0" />
-            <param name="wait_poll_interval" value="0.5" />
-            <param name="restart_delay" value="2.0" />
-        </node>
+        <include file="$(find mavros)/launch/apm.launch">
+            <arg name="fcu_url" value="$(arg mavros_fcu_url)" />
+            <arg name="gcs_url" value="" />
+            <arg name="tgt_system" value="$(arg sys_id)" />
+            <arg name="tgt_component" value="1" />
+            <arg name="respawn_mavros" value="true" />
+            <arg name="log_output" value="screen" />
+        </include>
 
         <node name="stream_rate_configurator" pkg="nexus_swarm_sim" type="configure_stream_rates.py" output="screen">
             <param name="state_topic" value="mavros/state" />
