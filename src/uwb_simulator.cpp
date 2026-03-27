@@ -397,6 +397,12 @@ void UwbSimulator::publish_ranges(const ros::TimerEvent& event)
             publish_stamp -= ros::Duration(sample_latency() / 1000.0);
         }
 
+        if (raw_signal_protocol_ == "ds_twr" &&
+            elem.first.ori_node > elem.first.end_node)
+        {
+            continue;
+        }
+
         float toa_ns = 0.0f;
         float snr_db = 0.0f;
         float rssi = 0.0f;
@@ -611,7 +617,9 @@ void UwbSimulator::publish_raw_signal_frame(const std::string& tx_drone,
     generate_cir_samples(snr_db, los, cir_real, cir_imag);
 
     nexus_swarm_sim::RawUWBSignal raw_msg;
-    raw_msg.header.stamp = publish_stamp;
+        ros::Time frame_stamp;
+        frame_stamp.fromNSec(tx_timestamp_ps / 1000ULL);
+        raw_msg.header.stamp = frame_stamp;
     raw_msg.header.frame_id = "map";
     raw_msg.src_id = tx_drone;
     raw_msg.dst_id = rx_drone;

@@ -284,6 +284,8 @@ When DS-TWR mode is active:
 - `toa_ns` represents a per-frame one-way arrival estimate
 - `frame_type` indicates where the frame belongs in the simulated exchange
 - `frame_seq` increments per transmitting vehicle, not globally
+- each vehicle pair currently has a single simulated exchange owner to avoid mirrored duplicate exchanges
+- `header.stamp` follows the frame TX event time, not only the outer simulator publish cycle
 
 `cir_real` and `cir_imag` are lightweight simulated CIR diagnostics.
 They should be treated as approximate low-level signal-shape hints, not as calibrated hardware dumps.
