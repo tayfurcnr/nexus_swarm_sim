@@ -4,6 +4,7 @@ export const state = {
   takeoffAltitude: 3,
   gotoAltitude: 10,
   clickToGoArmed: false,
+  commandTab: "single",
   pendingTarget: null,
   commandBusy: false,
   commandStatus: "",
@@ -19,4 +20,9 @@ export const state = {
   lastVehicleDetailSignature: "",
   lastCommandPanelSignature: "",
   lastSystemSignature: "",
+  lastVehicleListStructureSignature: "",
+  lastVehicleListLiveSignature: "",
+  lastVehicleListRenderAt: 0,
+  lastNeighborListSignature: "",
+  lastMapSignature: "",
 };

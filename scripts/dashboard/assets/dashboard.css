@@ -29,7 +29,9 @@ body {
 }
 
 .page {
+  width: min(100%, 1920px);
   min-height: 100vh;
+  margin: 0 auto;
   padding: 18px;
   display: grid;
   gap: 16px;
@@ -179,7 +181,7 @@ h1 {
 
 .dossier-grid {
   display: grid;
-  grid-template-columns: 0.9fr 1.15fr 1fr;
+  grid-template-columns: minmax(240px, 0.9fr) minmax(320px, 1.15fr) minmax(260px, 1fr);
   gap: 12px;
 }
 
@@ -205,6 +207,50 @@ h1 {
 
 .command-panel {
   margin-top: 4px;
+}
+
+.command-tabs {
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 6px;
+  margin: 2px 0 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(126, 164, 194, 0.12);
+  background: rgba(126, 164, 194, 0.06);
+}
+
+.command-tab {
+  min-width: 104px;
+  padding: 10px 14px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+.command-tab.is-active {
+  color: var(--text);
+  background: rgba(255, 122, 69, 0.14);
+  border-color: rgba(255, 122, 69, 0.22);
+}
+
+.command-tab:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.multi-hint {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 0.9rem;
 }
 
 .dossier-card-identity {
@@ -300,7 +346,7 @@ h1 {
 
 .quick-actions {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 10px;
 }
 
@@ -370,14 +416,14 @@ h1 {
 
 .takeoff-row {
   display: grid;
-  grid-template-columns: minmax(0, 220px) auto;
+  grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
   gap: 12px;
   align-items: end;
 }
 
 .goto-row {
   display: grid;
-  grid-template-columns: minmax(0, 220px) auto;
+  grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
   gap: 12px;
   align-items: end;
 }
@@ -659,7 +705,7 @@ h1 {
 
 .shell {
   display: grid;
-  grid-template-columns: 270px minmax(0, 1fr) 270px;
+  grid-template-columns: minmax(220px, clamp(240px, 18vw, 300px)) minmax(0, 1fr) minmax(220px, clamp(240px, 18vw, 300px));
   gap: 16px;
   align-items: start;
 }
@@ -703,7 +749,7 @@ h1 {
 #mapWrap {
   position: relative;
   margin: 10px 12px 0;
-  height: 700px;
+  height: clamp(460px, 62vh, 700px);
   border-radius: 22px;
   overflow: hidden;
   border: 1px solid var(--line);
@@ -711,7 +757,7 @@ h1 {
 
 #leafletMap {
   width: 100%;
-  height: 700px;
+  height: clamp(460px, 62vh, 700px);
 }
 
 .map-footer {
@@ -1071,9 +1117,19 @@ h1 {
   box-shadow: 0 6px 14px rgba(0, 0, 0, 0.28);
 }
 
+@media (max-width: 1560px) {
+  .dossier-grid {
+    grid-template-columns: minmax(240px, 1fr) minmax(280px, 1.1fr);
+  }
+
+  .dossier-grid > :last-child {
+    grid-column: 1 / -1;
+  }
+}
+
 @media (max-width: 1380px) {
   .shell {
-    grid-template-columns: 270px minmax(0, 1fr);
+    grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
   }
 
   .right-stack {
@@ -1136,7 +1192,7 @@ h1 {
   }
 
   .quick-actions {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
   }
 
   .takeoff-row {
@@ -1173,6 +1229,6 @@ h1 {
 
   #mapWrap,
   #leafletMap {
-    height: 400px;
+    height: clamp(320px, 46vh, 400px);
   }
 }

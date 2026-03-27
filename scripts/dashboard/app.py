@@ -137,7 +137,7 @@ class SwarmDashboard:
                 "lon": round(base_lon + slot * 0.00005, 7),
                 "alt": 0.2,
             }
-            self._vehicle_fcu_urls[drone_id] = f"tcp://127.0.0.1:{5760 + 10 * slot}"
+            self._vehicle_fcu_urls[drone_id] = f"udp://127.0.0.1:{14550 + 10 * slot}@"
             self._vehicle_headings[drone_id] = round((slot * 18.0) % 360.0, 1)
             self._vehicle_last_seen[drone_id] = now
 

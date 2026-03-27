@@ -108,6 +108,26 @@ export function renderMap(data, onSelect, onMapTarget) {
     map.on("click", mapClickHandler);
   }
 
+  const mapSignature = JSON.stringify({
+    selected: state.selected,
+    pendingTarget: state.pendingTarget,
+    vehicles: data.vehicles.map((vehicle) => ({
+      id: vehicle.id,
+      gps: vehicle.gps,
+      heading_deg: vehicle.heading_deg,
+      connected: !!vehicle.state?.connected,
+    })),
+    links: data.links.map((link) => ({
+      src: link.src,
+      dst: link.dst,
+      distance_3d: link.distance_3d,
+      los: link.los,
+    })),
+  });
+
+  if (mapSignature === state.lastMapSignature) return;
+  state.lastMapSignature = mapSignature;
+
   const vehiclesById = buildVehicleIndex(data);
   const validVehicles = data.vehicles.filter((vehicle) => vehicleLatLng(vehicle));
 

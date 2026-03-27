@@ -1,15 +1,26 @@
 import { fetchState, sendCommand } from "./api.js";
 import { POLL_MS } from "./config.js";
-import { renderAll } from "./render.js";
+import { renderAll, renderCommandPanel, renderNeighborList, renderVehicleDetail, renderVehicleList } from "./render.js";
 import { selectVehicle } from "./select.js";
 import { state } from "./state.js";
+import { updateMarkerClasses } from "./map.js";
 
 function rerender(data) {
-  renderAll(data, handleSelect, handleCommand, handleMapTarget);
+  renderAll(data, handleSelect, handleCommand, handleBatchCommand, handleMapTarget);
+}
+
+function rerenderSelection(data) {
+  state.lastVehicleListStructureSignature = "";
+  state.lastVehicleListLiveSignature = "";
+  renderVehicleList(data, handleSelect, { force: true });
+  renderVehicleDetail(data, handleCommand);
+  renderCommandPanel(data, handleCommand, handleBatchCommand);
+  renderNeighborList(data);
+  updateMarkerClasses(data);
 }
 
 function handleSelect(id) {
-  selectVehicle(id, rerender);
+  selectVehicle(id, rerenderSelection);
 }
 
 async function handleCommand(vehicleId, command, payload) {
@@ -25,6 +36,40 @@ async function handleCommand(vehicleId, command, payload) {
   } catch (err) {
     state.commandError = true;
     state.commandStatus = `${vehicleId}: ${err.message || err}`;
+  } finally {
+    state.commandBusy = false;
+    if (state.latest) rerender(state.latest);
+  }
+}
+
+async function handleBatchCommand(command, payload = {}) {
+  if (state.commandBusy || !state.latest) return;
+
+  const targets = state.latest.vehicles.filter((vehicle) => !!vehicle.state?.connected);
+  if (!targets.length) return;
+
+  state.commandBusy = true;
+  state.commandError = false;
+  state.commandStatus = `${targets.length} vehicles: ${command}...`;
+  if (state.latest) rerender(state.latest);
+
+  let successCount = 0;
+  let firstError = null;
+
+  try {
+    for (const vehicle of targets) {
+      try {
+        await sendCommand(vehicle.id, command, payload);
+        successCount += 1;
+      } catch (err) {
+        if (!firstError) firstError = `${vehicle.id}: ${err.message || err}`;
+      }
+    }
+
+    state.commandError = successCount !== targets.length;
+    state.commandStatus = firstError
+      ? `${command}: ${successCount}/${targets.length} ok · ${firstError}`
+      : `${command}: ${successCount}/${targets.length} succeeded`;
   } finally {
     state.commandBusy = false;
     if (state.latest) rerender(state.latest);

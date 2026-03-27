@@ -1,4 +1,5 @@
 import { escapeHtml, fmt, fmt7 } from "./format.js";
+import { VEHICLE_LIST_REFRESH_MS } from "./config.js";
 import { renderMap } from "./map.js";
 import { getSelectedVehicle } from "./select.js";
 import { state } from "./state.js";
@@ -24,8 +25,35 @@ export function renderSystem(data) {
   document.getElementById("clockText").textContent = `Last refresh: ${new Date().toLocaleTimeString()}`;
 }
 
-export function renderVehicleList(data, onSelect) {
+export function renderVehicleList(data, onSelect, options = {}) {
   const list = document.getElementById("vehicleList");
+  const force = !!options.force;
+  const structureSignature = JSON.stringify(
+    data.vehicles.map((vehicle) => ({
+      id: vehicle.id,
+      connected: !!vehicle.state?.connected,
+      selected: state.selected === vehicle.id,
+    })),
+  );
+  const liveSignature = JSON.stringify(
+    data.vehicles.map((vehicle) => ({
+      id: vehicle.id,
+      position: vehicle.position,
+    })),
+  );
+  const now = Date.now();
+
+  if (!force) {
+    if (structureSignature === state.lastVehicleListStructureSignature) {
+      if (liveSignature === state.lastVehicleListLiveSignature) return;
+      if (now - state.lastVehicleListRenderAt < VEHICLE_LIST_REFRESH_MS) return;
+    }
+  }
+
+  state.lastVehicleListStructureSignature = structureSignature;
+  state.lastVehicleListLiveSignature = liveSignature;
+  state.lastVehicleListRenderAt = now;
+
   const existing = new Map();
 
   for (const el of list.querySelectorAll("[data-vid]")) {
@@ -203,9 +231,10 @@ export function renderVehicleDetail(data, onCommand) {
   state.lastSelectionRenderId = vehicle.id;
 }
 
-export function renderCommandPanel(data, onCommand) {
+export function renderCommandPanel(data, onCommand, onBatchCommand) {
   const panel = document.getElementById("commandPanel");
   const vehicle = getSelectedVehicle(data);
+  const connectedVehicles = data.vehicles.filter((entry) => !!entry.state?.connected);
 
   if (!vehicle) {
     panel.innerHTML = '<div class="muted">Select a vehicle to send arm, mode, takeoff, and map target commands.</div>';
@@ -229,22 +258,24 @@ export function renderCommandPanel(data, onCommand) {
     takeoffAltitude: state.takeoffAltitude,
     gotoAltitude: state.gotoAltitude,
     clickToGoArmed: state.clickToGoArmed,
+    commandTab: state.commandTab,
     pendingTarget: state.pendingTarget,
+    connectedVehicleIds: connectedVehicles.map((entry) => entry.id),
   });
 
-  const html = `
-    <div class="command-shell">
-      <div class="command-head">
-        <div>
-          <div class="command-title">${escapeHtml(vehicle.label)}</div>
-          <div class="command-sub">${escapeHtml(vehicle.namespace ?? "--")} · ${connected ? "FCU Connected" : "No FCU Link"}</div>
-        </div>
-        <span class="dossier-tag ${connected ? "is-live" : "is-cold"}">${escapeHtml(vehicle.state?.mode || "N/A")}</span>
-      </div>
+  const singleTabActive = state.commandTab !== "multi";
+  const tabsHtml = `
+    <div class="command-tabs" role="tablist" aria-label="Quick command scope">
+      <button type="button" class="command-tab ${singleTabActive ? "is-active" : ""}" data-command-tab="single">Single</button>
+      <button type="button" class="command-tab ${singleTabActive ? "" : "is-active"}" data-command-tab="multi">Multi</button>
+    </div>
+  `;
 
+  const singleHtml = `
       <div class="quick-actions">
         <button type="button" class="quick-btn" data-command="set_mode" data-mode="GUIDED">GUIDED</button>
         <button type="button" class="quick-btn" data-command="set_mode" data-mode="LOITER">LOITER</button>
+        <button type="button" class="quick-btn" data-command="set_mode" data-mode="RTL">RTL</button>
         <button type="button" class="quick-btn" data-command="arm">ARM</button>
         <button type="button" class="quick-btn quick-btn-warn" data-command="disarm">DISARM</button>
       </div>
@@ -266,6 +297,39 @@ export function renderCommandPanel(data, onCommand) {
       </div>
 
       <div class="goto-hint">${state.clickToGoArmed ? "Click an empty point on the map to send the selected vehicle there in GUIDED mode." : "Arm click-to-go, then click an empty point on the map to send the selected vehicle."}</div>
+  `;
+
+  const multiHtml = `
+      <div class="multi-hint">Scope: all connected vehicles (${connectedVehicles.length}).</div>
+      <div class="takeoff-row">
+        <label class="takeoff-field">
+          <span>Takeoff Altitude (m)</span>
+          <input id="takeoffAltitude" type="number" min="0.5" step="0.5" value="${escapeHtml(String(state.takeoffAltitude))}">
+        </label>
+        <button type="button" class="quick-btn quick-btn-accent" data-batch-command="takeoff">TAKEOFF ALL</button>
+      </div>
+      <div class="quick-actions">
+        <button type="button" class="quick-btn" data-batch-command="set_mode" data-mode="GUIDED">ALL GUIDED</button>
+        <button type="button" class="quick-btn" data-batch-command="set_mode" data-mode="LOITER">ALL LOITER</button>
+        <button type="button" class="quick-btn" data-batch-command="set_mode" data-mode="RTL">ALL RTL</button>
+        <button type="button" class="quick-btn" data-batch-command="arm">ARM ALL</button>
+        <button type="button" class="quick-btn quick-btn-warn" data-batch-command="disarm">DISARM ALL</button>
+      </div>
+      <div class="goto-hint">Multi commands are sent sequentially to all currently connected vehicles.</div>
+  `;
+
+  const html = `
+    <div class="command-shell">
+      <div class="command-head">
+        <div>
+          <div class="command-title">${escapeHtml(vehicle.label)}</div>
+          <div class="command-sub">${escapeHtml(vehicle.namespace ?? "--")} · ${connected ? "FCU Connected" : "No FCU Link"}</div>
+        </div>
+        <span class="dossier-tag ${connected ? "is-live" : "is-cold"}">${escapeHtml(vehicle.state?.mode || "N/A")}</span>
+      </div>
+
+      ${tabsHtml}
+      ${singleTabActive ? singleHtml : multiHtml}
 
       ${pendingTarget}
 
@@ -281,43 +345,64 @@ export function renderCommandPanel(data, onCommand) {
   const altitudeInput = panel.querySelector("#takeoffAltitude");
   if (altitudeInput) {
     altitudeInput.disabled = state.commandBusy || !connected;
-    altitudeInput.addEventListener("input", () => {
+    altitudeInput.oninput = () => {
       const nextValue = Number(altitudeInput.value);
       if (Number.isFinite(nextValue) && nextValue > 0) {
         state.takeoffAltitude = nextValue;
       }
-    });
+    };
   }
 
   const gotoAltitudeInput = panel.querySelector("#gotoAltitude");
   if (gotoAltitudeInput) {
     gotoAltitudeInput.disabled = state.commandBusy || !connected;
-    gotoAltitudeInput.addEventListener("input", () => {
+    gotoAltitudeInput.oninput = () => {
       const nextValue = Number(gotoAltitudeInput.value);
       if (Number.isFinite(nextValue) && nextValue > 0) {
         state.gotoAltitude = nextValue;
       }
-    });
+    };
   }
 
   const clickToGoToggle = panel.querySelector("#clickToGoToggle");
   if (clickToGoToggle) {
     clickToGoToggle.disabled = state.commandBusy || !connected;
-    clickToGoToggle.addEventListener("click", () => {
+    clickToGoToggle.onclick = () => {
       state.clickToGoArmed = !state.clickToGoArmed;
       renderCommandPanel(data, onCommand);
-    });
+    };
   }
 
   for (const button of panel.querySelectorAll("[data-command]")) {
     button.disabled = state.commandBusy || !connected;
-    button.addEventListener("click", () => {
+    button.onclick = () => {
       const command = button.dataset.command;
       const payload = {};
       if (button.dataset.mode) payload.mode = button.dataset.mode;
       if (command === "takeoff") payload.altitude = state.takeoffAltitude;
       onCommand(vehicle.id, command, payload);
-    });
+    };
+  }
+
+  for (const tab of panel.querySelectorAll("[data-command-tab]")) {
+    tab.disabled = state.commandBusy;
+    tab.onclick = () => {
+      const nextTab = tab.dataset.commandTab === "multi" ? "multi" : "single";
+      if (state.commandTab === nextTab) return;
+      state.commandTab = nextTab;
+      renderCommandPanel(data, onCommand, onBatchCommand);
+    };
+  }
+
+  for (const button of panel.querySelectorAll("[data-batch-command]")) {
+    button.disabled = state.commandBusy || !connectedVehicles.length;
+    button.onclick = () => {
+      const command = button.dataset.batchCommand;
+      const payload = {};
+      if (button.dataset.mode) payload.mode = button.dataset.mode;
+      if (command === "takeoff") payload.altitude = state.takeoffAltitude;
+      onBatchCommand(command, payload);
+    };
   }
 }
 
@@ -326,7 +411,10 @@ export function renderNeighborList(data) {
   const vehicle = getSelectedVehicle(data);
 
   if (!vehicle) {
-    list.innerHTML = '<div class="empty-state">Select a vehicle to inspect nearby UWB links.</div>';
+    if (state.lastNeighborListSignature !== "__empty__") {
+      list.innerHTML = '<div class="empty-state">Select a vehicle to inspect nearby UWB links.</div>';
+      state.lastNeighborListSignature = "__empty__";
+    }
     return;
   }
 
@@ -334,10 +422,27 @@ export function renderNeighborList(data) {
     .filter((link) => link.src === vehicle.id || link.dst === vehicle.id)
     .sort((left, right) => left.distance_3d - right.distance_3d);
 
+  const signature = JSON.stringify({
+    vehicleId: vehicle.id,
+    links: links.map((link) => ({
+      src: link.src,
+      dst: link.dst,
+      distance_3d: link.distance_3d,
+      los: link.los,
+      rssi_dbm: link.rssi_dbm,
+    })),
+  });
+
   if (!links.length) {
-    list.innerHTML = '<div class="empty-state">No recent UWB links for this vehicle.</div>';
+    if (state.lastNeighborListSignature !== `${vehicle.id}:none`) {
+      list.innerHTML = '<div class="empty-state">No recent UWB links for this vehicle.</div>';
+      state.lastNeighborListSignature = `${vehicle.id}:none`;
+    }
     return;
   }
+
+  if (signature === state.lastNeighborListSignature) return;
+  state.lastNeighborListSignature = signature;
 
   list.innerHTML = links.map((link) => {
     const neighborId = link.src === vehicle.id ? link.dst : link.src;
@@ -354,12 +459,12 @@ export function renderNeighborList(data) {
   }).join("");
 }
 
-export function renderAll(data, onSelect, onCommand, onMapTarget) {
+export function renderAll(data, onSelect, onCommand, onBatchCommand, onMapTarget) {
   state.latest = data;
   renderSystem(data);
   renderVehicleList(data, onSelect);
   renderVehicleDetail(data, onCommand);
-  renderCommandPanel(data, onCommand);
+  renderCommandPanel(data, onCommand, onBatchCommand);
   renderNeighborList(data);
   renderMap(data, onSelect, onMapTarget);
 }

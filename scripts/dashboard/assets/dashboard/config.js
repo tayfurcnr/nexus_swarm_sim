@@ -1,4 +1,5 @@
-export const POLL_MS = 750;
+export const POLL_MS = 300;
+export const VEHICLE_LIST_REFRESH_MS = 900;
 
 export const NEXUS_SVG = `
   <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" width="26" height="26" aria-hidden="true">
