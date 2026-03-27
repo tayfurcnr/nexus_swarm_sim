@@ -6,6 +6,7 @@
     <arg name="num_drones" default="3" />
     <arg name="drone_prefix" default="nexus" />
     <arg name="spawn_delay" default="0.5" />
+    <arg name="spawn_config" default="$(find nexus_swarm_sim)/config/spawn_formation.yaml" />
     <arg name="scenario_config" default="$(find nexus_swarm_sim)/config/uwb_simulator.yaml" />
     <arg name="world_name" default="$(find nexus_swarm_sim)/worlds/swarm_uwb.world" />
     <arg name="gazebo_model_file" default="/usr/share/gazebo-11/models/iris_with_standoffs/model.sdf" />
@@ -25,6 +26,8 @@
         <arg name="dashboard_host" value="$(arg dashboard_host)" />
         <arg name="dashboard_port" value="$(arg dashboard_port)" />
     </include>
+
+    <rosparam ns="swarm_launcher" file="$(arg spawn_config)" />
 
     <node name="swarm_launcher" pkg="nexus_swarm_sim" type="swarm_launcher.py" output="screen">
         <param name="num_drones" value="$(arg num_drones)" />

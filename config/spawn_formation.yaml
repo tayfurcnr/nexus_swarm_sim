@@ -1,0 +1,68 @@
+# Supported configuration keys:
+#   formation_mode
+#   formation
+#   formation_set
+#   formation_seed
+#   spacing
+#   origin.x
+#   origin.y
+#   origin.z
+#
+# Supported formation values:
+#   line
+#   triangle
+#   grid
+#   circle
+#   v          -> rear-opening V formation
+#   arrowhead  -> forward-pointing arrowhead formation
+#   diamond
+#   crescent   -> crescent / hilal-shaped arc
+#
+# Example random setup:
+#   formation_mode: random
+#   formation_set: [line, triangle, grid, circle, v, arrowhead, diamond, crescent]
+#
+# Example fixed setup:
+#   formation_mode: fixed
+#   formation: triangle
+#
+# Runtime inspection:
+#   rosparam get /swarm_launcher/selected_formation
+#
+# formation_mode:
+#   fixed  -> always use the formation specified in `formation`
+#   random -> randomly choose one formation from `formation_set`
+formation_mode: random
+
+# formation:
+#   supported values: line | triangle | grid | circle | v | arrowhead | diamond | crescent
+# active formation used when formation_mode is `fixed`
+formation: line
+
+# formation_set:
+# list of allowed formations used when formation_mode is `random`
+formation_set:
+  - line
+  - triangle
+  - grid
+  - circle
+  - v
+  - arrowhead
+  - diamond
+  - crescent
+
+# formation_seed:
+#   auto   -> choose a different random result on each launch
+#   number -> make random formation selection reproducible
+formation_seed: auto
+
+# spacing:
+# base distance in meters between neighboring vehicles
+spacing: 2.0
+
+# origin:
+# reference point for the generated formation
+origin:
+  x: 0.0
+  y: 0.0
+  z: 0.2
