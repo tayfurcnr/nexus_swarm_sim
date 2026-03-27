@@ -24,6 +24,7 @@ roslaunch nexus_swarm_sim models_only.launch gui:=true headless:=false num_drone
 Notes:
 - `payload_injector_example.py` is meant for the full ArduPilot/MAVROS path.
 - `neighbor_discovery_example.py` and `signal_processor_example.py` also make sense in `uwb_only.launch`.
+- `raw_dstwr_exchange_consumer_example.py` is useful when `raw_signal_protocol:=ds_twr`.
 - `models_only.launch` is useful when you want real Gazebo visuals but not SITL.
 - `payload_processor.py` expects messages from `range_with_payload`, so it is most useful together with `payload_injector_example.py`.
 
@@ -110,6 +111,30 @@ Default input topic pattern:
 Useful params:
 - `_drone_prefix:=nexus`
 - `_topic_suffix:=range_with_payload`
+
+## 5. DS-TWR Exchange Consumer
+
+Purpose:
+- Subscribe to all `raw_signal` topics relevant to one drone
+- Reconstruct DS-TWR exchanges by `exchange_seq`
+- Detect complete and incomplete exchanges
+
+Run:
+```bash
+rosrun nexus_swarm_sim raw_dstwr_exchange_consumer_example.py _drone_id:=nexus1 _drone_prefix:=nexus
+```
+
+Useful params:
+- `_drone_id:=nexus1`
+- `_drone_prefix:=nexus`
+- `_exchange_timeout_s:=0.75`
+
+Input topics:
+- `/<drone>/uwb/raw_signal`
+
+Notes:
+- Complete exchanges require `POLL`, `RESP`, and `FINAL`.
+- Missing `RESP` or `FINAL` frames are reported as incomplete exchanges after timeout.
 
 ## Typical Combined Flow
 
