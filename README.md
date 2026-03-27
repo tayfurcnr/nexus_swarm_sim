@@ -38,12 +38,12 @@ The repository supports two practical operating styles:
 ### Full Stack
 
 ```bash
-mkdir -p ~/nexus_swarm_sim_ws/src
-cd ~/nexus_swarm_sim_ws/src
+mkdir -p ~/swarm_ws/src
+cd ~/swarm_ws/src
 git clone https://github.com/tayfurcnr/nexus_swarm_sim.git
 cd nexus_swarm_sim
 bash setup_ardupilot_noetic.sh
-cd ~/nexus_swarm_sim_ws
+cd ~/swarm_ws
 source devel/setup.bash
 roslaunch nexus_swarm_sim full_swarm.launch num_drones:=3
 ```
@@ -53,10 +53,10 @@ Dashboard is available at `http://localhost:8787` during `full_swarm.launch`.
 ### Non-SITL Bringup
 
 ```bash
-mkdir -p ~/nexus_swarm_sim_ws/src
-cd ~/nexus_swarm_sim_ws/src
+mkdir -p ~/swarm_ws/src
+cd ~/swarm_ws/src
 git clone https://github.com/tayfurcnr/nexus_swarm_sim.git
-cd ~/nexus_swarm_sim_ws
+cd ~/swarm_ws
 python3 -m pip install -r src/nexus_swarm_sim/requirements.txt
 catkin_make
 source devel/setup.bash
@@ -123,7 +123,7 @@ Use the repository documents by purpose:
 ## Operational Notes
 
 - The setup script installs ArduPilot into `~/ardupilot` and `ardupilot_gazebo` into `~/ardupilot_gazebo`.
-- The package itself is expected to live inside a catkin workspace such as `~/nexus_swarm_sim_ws/src/nexus_swarm_sim`.
+- The package itself is expected to live inside a catkin workspace such as `~/swarm_ws/src/nexus_swarm_sim`.
 - On a new machine, prefer the setup script unless you intentionally want a non-SITL workflow.
 - `swarm_uwb.world` loads a Gazebo world plugin that exposes `/uwb_simulator/check_los`; when `/uwb_simulator/use_gazebo_raycast:=true`, UWB LOS decisions come from Gazebo ray casting instead of only the probabilistic fallback.
 - UWB outputs are available on per-vehicle topics such as `/<drone>/uwb/range` and `/<drone>/uwb/raw_signal`, with LOS state included in the published messages.

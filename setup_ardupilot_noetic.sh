@@ -4,7 +4,7 @@
 
 set -e
 
-WORKSPACE_DIR="${WORKSPACE_DIR:-${HOME}/nexus_swarm_sim_ws}"
+WORKSPACE_DIR="${WORKSPACE_DIR:-${HOME}/swarm_ws}"
 REPO_URL="https://github.com/tayfurcnr/nexus_swarm_sim.git"
 REPO_DIR="${WORKSPACE_DIR}/src/nexus_swarm_sim"
 ARDUPILOT_DIR="${HOME}/ardupilot"

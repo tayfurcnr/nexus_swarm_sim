@@ -38,7 +38,7 @@ The recommended filesystem layout is:
 Reference layout:
 
 ```text
-~/nexus_swarm_sim_ws/
+~/swarm_ws/
   src/
     nexus_swarm_sim/
 
@@ -67,15 +67,15 @@ The setup script also supports:
 ### 1. Create the workspace and clone the repository
 
 ```bash
-mkdir -p ~/nexus_swarm_sim_ws/src
-cd ~/nexus_swarm_sim_ws/src
+mkdir -p ~/swarm_ws/src
+cd ~/swarm_ws/src
 git clone https://github.com/tayfurcnr/nexus_swarm_sim.git
 ```
 
 ### 2. Run the setup script
 
 ```bash
-cd ~/nexus_swarm_sim_ws/src/nexus_swarm_sim
+cd ~/swarm_ws/src/nexus_swarm_sim
 bash setup_ardupilot_noetic.sh
 ```
 
@@ -88,7 +88,7 @@ bash setup_ardupilot_noetic.sh --yes
 ### 3. Source the workspace
 
 ```bash
-cd ~/nexus_swarm_sim_ws
+cd ~/swarm_ws
 source devel/setup.bash
 ```
 
@@ -129,7 +129,7 @@ A machine is considered ready for the full stack when all of the following are t
 - `~/ardupilot_gazebo` exists
 - `~/ardupilot_gazebo/models/iris_with_ardupilot/model.sdf` exists
 - `rospack find mavros` succeeds
-- `source ~/nexus_swarm_sim_ws/devel/setup.bash` succeeds
+- `source ~/swarm_ws/devel/setup.bash` succeeds
 - `roslaunch nexus_swarm_sim uwb_only.launch num_drones:=3` starts successfully
 - `roslaunch nexus_swarm_sim single_vehicle_sitl.launch` starts successfully
 
@@ -260,7 +260,7 @@ sudo bash /tmp/install_geographiclib.sh
 ### If Python dependencies are missing
 
 ```bash
-cd ~/nexus_swarm_sim_ws
+cd ~/swarm_ws
 python3 -m pip install -r src/nexus_swarm_sim/requirements.txt
 ```
 
