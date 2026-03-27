@@ -43,6 +43,10 @@ Low-level signal-oriented outputs are also published per vehicle:
 
 - `/<vehicle>/uwb/raw_signal`
 
+Payload injection inputs are accepted per vehicle:
+
+- `/<vehicle>/uwb/tx/payload`
+
 The per-vehicle topic namespace is intentional.
 It keeps the simulator aligned with multi-vehicle ROS namespace structure and allows downstream packages to subscribe vehicle-by-vehicle.
 
@@ -233,6 +237,9 @@ These fields are meaningful as low-level signal-oriented outputs:
 - `src_id`
 - `dst_id`
 - `toa_ns`
+- `tx_timestamp_ps`
+- `rx_timestamp_ps`
+- `clock_offset_ppm`
 - `snr_db`
 - `rssi`
 - `channel`
@@ -240,8 +247,24 @@ These fields are meaningful as low-level signal-oriented outputs:
 - `first_path_power_dbm`
 - `fp_index`
 - `sts_quality`
+- `frame_seq`
+- `frame_type`
+- `frame_payload`
+- `cir_real`
+- `cir_imag`
 
 These are appropriate for lower-level experimentation and for future hardware-aligned interface work.
+
+`frame_payload` should be interpreted as raw payload bytes carried by the received UWB frame.
+It is not application-decoded by this package.
+Any message parsing, schema interpretation, or higher-level meaning belongs to downstream packages.
+The payload bytes currently come from the latest message published to `/<vehicle>/uwb/tx/payload`.
+
+`tx_timestamp_ps` and `rx_timestamp_ps` are simulator-derived picosecond timestamps intended to be closer to a driver-facing timestamp contract than `toa_ns` alone.
+`toa_ns` remains as a convenience field derived from the same simulated timing path.
+
+`cir_real` and `cir_imag` are lightweight simulated CIR diagnostics.
+They should be treated as approximate low-level signal-shape hints, not as calibrated hardware dumps.
 
 ### Core status fields
 
@@ -275,7 +298,7 @@ The following should not be carried by `RawUWBSignal` if the goal is to keep it 
 
 - simulator geometric truth
 - already-derived range outputs
-- heavy sample-dump debug payloads as part of the default contract
+- heavy sample-dump diagnostics as part of the default contract
 
 If needed later, such data should live in separate debug-only topics or messages.
 
@@ -314,7 +337,7 @@ The main gaps are:
 
 - no explicit node-level identifier contract in published messages
 - no explicit validity/status field in `UwbRange`
-- no sequence-number contract for correlation and replay
+- CIR remains a lightweight approximation rather than a hardware-faithful dump
 - no formal separation into dedicated production-facing and debug-facing message families
 
 ## Near-Term Contract Priorities

@@ -8,6 +8,8 @@ model_prefix: "nexus"            # Prefix the UWB simulator discovers from /gaze
 # Topics
 ground_truth_topic: "/gazebo/model_states"
 pub_topic_prefix: "/uwb"
+# External payload injection topic pattern:
+#   /<vehicle>/uwb/tx/payload
 
 # Single onboard UWB node mount
 uwb_node:

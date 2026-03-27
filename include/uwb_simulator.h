@@ -17,6 +17,7 @@
 #include <ros/ros.h>
 
 #include <std_msgs/Float64.h>
+#include <std_msgs/UInt8MultiArray.h>
 
 #include <sensor_msgs/Range.h>
 #include <ros/service_client.h>
@@ -199,10 +200,15 @@ class UwbSimulator
         
         // Drone-specific raw signal publishers (PRIMARY - for signal processing algorithms)
         std::map<std::string, ros::Publisher> drone_raw_signal_publishers_;  // /uwb/iris0/raw_signal, etc.
+        std::map<std::string, ros::Subscriber> drone_tx_payload_subscribers_;
+        std::map<std::string, std::vector<uint8_t>> drone_tx_payload_cache_;
+        std::map<std::string, uint16_t> drone_frame_sequence_counters_;
+        std::map<std::string, double> drone_clock_offsets_ppm_;
 
         // Topic callbacks
         void ground_truth_callback(const gazebo_msgs::ModelStates::ConstPtr& msg);
         void check_for_new_models(const std::vector<std::string>& models);
+        void tx_payload_callback(const std_msgs::UInt8MultiArray::ConstPtr& msg, const std::string& drone_id);
 
         // ===== DW3000-Realistic Modeling Functions =====
         
@@ -228,6 +234,9 @@ class UwbSimulator
         
         // Payload generation (custom data from sender)
         std::vector<uint8_t> generate_payload(const std::string& src_id);
+        uint16_t next_frame_sequence(const std::string& src_id);
+        double get_clock_offset_ppm(const std::string& drone_id);
+        void generate_cir_samples(float snr_db, bool los, std::vector<int16_t>& cir_real, std::vector<int16_t>& cir_imag);
         
         // Raw signal generation (low-level ToA-based measurement)
         void generate_raw_signal(double measured_distance_m, double true_distance_m, bool los, 

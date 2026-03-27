@@ -2,6 +2,7 @@
 #include <ctime>
 #include <cstdlib>
 #include <algorithm>
+#include <boost/bind/bind.hpp>
 
 UwbSimulator::UwbSimulator(ros::NodeHandle& nh) : nh_(nh)
 {
@@ -246,9 +247,18 @@ void UwbSimulator::check_for_new_models(const std::vector<std::string>& models)
         // Create publishers for this new drone
         std::string range_topic = "/" + model + pub_topic_prefix_ + "/range";
         std::string raw_topic = "/" + model + pub_topic_prefix_ + "/raw_signal";
+        std::string tx_payload_topic = "/" + model + pub_topic_prefix_ + "/tx/payload";
         
         drone_tx_publishers_[model] = nh_.advertise<nexus_swarm_sim::UwbRange>(range_topic, 100);
         drone_raw_signal_publishers_[model] = nh_.advertise<nexus_swarm_sim::RawUWBSignal>(raw_topic, 100);
+        drone_tx_payload_cache_[model] = {};
+        drone_frame_sequence_counters_[model] = 0;
+        std::normal_distribution<double> clock_offset_dist(0.0, 1.5);
+        drone_clock_offsets_ppm_[model] = clock_offset_dist(rng_);
+        drone_tx_payload_subscribers_[model] = nh_.subscribe<std_msgs::UInt8MultiArray>(
+            tx_payload_topic,
+            10,
+            boost::bind(&UwbSimulator::tx_payload_callback, this, boost::placeholders::_1, model));
 
         ROS_INFO_STREAM("  --> Created publishers for " << model);
 
@@ -269,6 +279,11 @@ void UwbSimulator::check_for_new_models(const std::vector<std::string>& models)
             ROS_INFO_STREAM("  --> Initialized ranging links: " << model << " <--> " << other);
         }
     }
+}
+
+void UwbSimulator::tx_payload_callback(const std_msgs::UInt8MultiArray::ConstPtr& msg, const std::string& drone_id)
+{
+    drone_tx_payload_cache_[drone_id] = std::vector<uint8_t>(msg->data.begin(), msg->data.end());
 }
 
 boost::geometry::model::point<double, 3, boost::geometry::cs::cartesian> UwbSimulator::calc_uwb_node_pose(
@@ -386,6 +401,15 @@ void UwbSimulator::publish_ranges(const ros::TimerEvent& event)
         float quality = estimate_quality(snr_db, los, outlier_injected);
         float fppl = estimate_fppl(rssi, los);
         float sts_quality = estimate_sts_quality(snr_db, los, outlier_injected);
+        uint16_t frame_seq = next_frame_sequence(elem.first.ori_node);
+        float clock_offset_ppm = static_cast<float>(get_clock_offset_ppm(elem.first.ori_node));
+        uint64_t tx_timestamp_ps = static_cast<uint64_t>(publish_stamp.toNSec()) * 1000ULL;
+        double toa_ps = static_cast<double>(toa_ns) * 1000.0;
+        double drift_scale = 1.0 + (static_cast<double>(clock_offset_ppm) * 1.0e-6);
+        uint64_t rx_timestamp_ps = tx_timestamp_ps + static_cast<uint64_t>(std::max(0.0, toa_ps * drift_scale));
+        std::vector<int16_t> cir_real;
+        std::vector<int16_t> cir_imag;
+        generate_cir_samples(snr_db, los, cir_real, cir_imag);
 
         // Publish debug topic if enabled
         if (enable_debug_topics_)
@@ -443,6 +467,9 @@ void UwbSimulator::publish_ranges(const ros::TimerEvent& event)
         raw_msg.status_code = classify_raw_signal_status(snr_db, los, outlier_injected, sts_quality);
         raw_msg.valid = is_raw_signal_valid(raw_msg.status_code);
         raw_msg.toa_ns = toa_ns;
+        raw_msg.tx_timestamp_ps = tx_timestamp_ps;
+        raw_msg.rx_timestamp_ps = rx_timestamp_ps;
+        raw_msg.clock_offset_ppm = clock_offset_ppm;
         raw_msg.snr_db = snr_db;
         raw_msg.rssi = rssi;
         raw_msg.channel = 5;  // DW3000 default channel
@@ -450,6 +477,11 @@ void UwbSimulator::publish_ranges(const ros::TimerEvent& event)
         raw_msg.first_path_power_dbm = fppl;
         raw_msg.fp_index = static_cast<uint16_t>(std::max(0.0f, std::round(std::min(1023.0f, 18.0f + snr_db * 0.6f))));
         raw_msg.sts_quality = sts_quality;
+        raw_msg.frame_seq = frame_seq;
+        raw_msg.frame_type = 1;  // Generic ranging frame for simulator integration
+        raw_msg.frame_payload = generate_payload(elem.first.ori_node);
+        raw_msg.cir_real = cir_real;
+        raw_msg.cir_imag = cir_imag;
         
         if (drone_raw_signal_publishers_.find(src_drone) != drone_raw_signal_publishers_.end())
         {
@@ -476,21 +508,76 @@ int main(int argc, char **argv)
 std::vector<uint8_t> UwbSimulator::generate_payload(const std::string& src_id)
 {
     /*
-        Generate empty payload to be transmitted in UWB frame.
-        External ROS packages will populate this field with custom data.
-        
-        This allows flexible payload handling from separate nodes:
-        - Custom telemetry packages can subscribe and inject data
-        - Algorithm nodes can embed processing results
-        - Payload remains modular and decoupled from simulation
-        
-        Payload format: EMPTY (caller will fill)
-        Maximum size: 127 bytes (DW3000 hardware limit)
+        Return the latest payload bytes provided by an external ROS package on:
+        /<drone_id>/uwb/tx/payload
+
+        Payload semantics are intentionally external to the simulator.
+        The simulator only transports raw frame bytes.
     */
-    
-    std::vector<uint8_t> payload;
-    // Return empty - external packages will populate
-    return payload;
+
+    auto it = drone_tx_payload_cache_.find(src_id);
+    if (it == drone_tx_payload_cache_.end())
+    {
+        return {};
+    }
+    return it->second;
+}
+
+uint16_t UwbSimulator::next_frame_sequence(const std::string& src_id)
+{
+    auto& counter = drone_frame_sequence_counters_[src_id];
+    uint16_t current = counter;
+    counter = static_cast<uint16_t>(counter + 1);
+    return current;
+}
+
+double UwbSimulator::get_clock_offset_ppm(const std::string& drone_id)
+{
+    auto it = drone_clock_offsets_ppm_.find(drone_id);
+    if (it == drone_clock_offsets_ppm_.end())
+    {
+        std::normal_distribution<double> clock_offset_dist(0.0, 1.5);
+        double offset_ppm = clock_offset_dist(rng_);
+        drone_clock_offsets_ppm_[drone_id] = offset_ppm;
+        return offset_ppm;
+    }
+    return it->second;
+}
+
+void UwbSimulator::generate_cir_samples(float snr_db, bool los, std::vector<int16_t>& cir_real, std::vector<int16_t>& cir_imag)
+{
+    static constexpr int kCirSampleCount = 16;
+    cir_real.clear();
+    cir_imag.clear();
+    cir_real.reserve(kCirSampleCount);
+    cir_imag.reserve(kCirSampleCount);
+
+    double peak_amplitude = std::max(40.0, 220.0 + static_cast<double>(snr_db) * 18.0);
+    if (!los)
+    {
+        peak_amplitude *= 0.78;
+    }
+
+    std::normal_distribution<double> sample_noise(0.0, los ? 8.0 : 16.0);
+    std::normal_distribution<double> imag_noise(0.0, los ? 6.0 : 12.0);
+
+    for (int i = 0; i < kCirSampleCount; ++i)
+    {
+        double distance_from_peak = static_cast<double>(i - 5);
+        double envelope = peak_amplitude * std::exp(-(distance_from_peak * distance_from_peak) / 10.0);
+        if (!los && i > 7)
+        {
+            envelope += peak_amplitude * 0.22 * std::exp(-((i - 11.0) * (i - 11.0)) / 6.0);
+        }
+
+        double real_value = envelope + sample_noise(rng_);
+        double imag_value = (envelope * 0.18) + imag_noise(rng_);
+        real_value = std::max(-32768.0, std::min(32767.0, real_value));
+        imag_value = std::max(-32768.0, std::min(32767.0, imag_value));
+
+        cir_real.push_back(static_cast<int16_t>(std::lround(real_value)));
+        cir_imag.push_back(static_cast<int16_t>(std::lround(imag_value)));
+    }
 }
 
 void UwbSimulator::generate_raw_signal(double measured_distance_m, double true_distance_m, bool los,
