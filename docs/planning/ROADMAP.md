@@ -2,199 +2,200 @@
 
 ## Objective
 
-This roadmap defines the intended evolution of `nexus_swarm_sim` as a simulation-environment and sensor-simulation package.
+This roadmap defines the intended evolution of `nexus_swarm_sim` as a reusable
+simulation substrate for multi-vehicle Gazebo and ArduPilot workflows with
+simulated UWB outputs.
 
-The package is not intended to become the home of downstream localization, TWR-solving, or swarm-autonomy algorithms. Its role is to provide a realistic and reusable simulation substrate that other packages can consume with minimal rework when transitioning to real hardware.
+The package is not intended to become the home of downstream localization,
+range-solving, coordination, or autonomy algorithms. Its role is to provide a
+stable, realistic-enough environment and UWB-facing data stream that downstream
+packages can consume now and later replace with real hardware sources with
+limited architectural change.
 
-The roadmap therefore prioritizes:
+## Working Assumptions
 
-- interface stability
-- simulation realism where it materially affects downstream systems
-- clean boundaries between simulation and algorithm packages
-- low-level signal outputs that can later be mirrored by real UWB-backed packages
-- reproducibility and debugging support
-- migration readiness for future real UWB hardware integration
+The roadmap below assumes:
+
+- one UWB node per vehicle
+- vehicle-level identifiers in published topics and messages
+- `RawUWBSignal` is the preferred future-facing low-level interface
+- `UwbRange` remains a processed simulator-side helper output
+
+Explicit multi-node-per-vehicle topology is not a current roadmap target.
 
 ## Guiding Principles
 
 - Keep environment generation and algorithm interpretation separate.
 - Prefer stable ROS contracts over simulator-specific shortcuts.
-- Treat low-level UWB-like outputs as the preferred sim-to-real boundary where practical.
-- Improve realism first where it changes downstream software behavior.
-- Isolate simulation-only debug data from long-term sensor-facing interfaces.
-- Build toward a workflow where downstream packages can swap simulated and real measurement sources with limited changes.
+- Improve realism where it changes downstream software behavior.
+- Preserve a usable low-level UWB-facing interface for future sim-to-real work.
+- Keep simulation-only diagnostics available without making downstream packages depend on them.
+- Make debugging, replay, and reproducibility practical.
 
-## Phase 1: Interface and Contract Stabilization
+## Current State
+
+The following are already present in the repository:
+
+- a documented UWB-facing interface contract
+- `UwbRange` and `RawUWBSignal` message definitions
+- per-vehicle UWB topic naming
+- single-node-per-vehicle mounting assumption
+- Gazebo LOS raycast support
+- configurable timing, dropout, jitter, outlier, and NLOS-related effects
+- DS-TWR-oriented low-level raw signal publishing
+- monitor, dashboard, and example consumer tooling
+
+Relevant references:
+
+- [UWB Interface Contract](/home/kairos/swarm_ws/src/nexus_swarm_sim/docs/contracts/UWB_INTERFACE_CONTRACT.md)
+- [UWB Simulator](/home/kairos/swarm_ws/src/nexus_swarm_sim/src/uwb_simulator.cpp)
+- [LOS Raycast Plugin](/home/kairos/swarm_ws/src/nexus_swarm_sim/src/los_raycast_plugin.cpp)
+
+## Remaining Roadmap
+
+## Phase 1: Contract Maintenance
 
 ### Goal
 
-Define and stabilize the sensor-facing outputs that downstream packages will rely on.
+Keep the published UWB contract stable and explicit as the simulator evolves.
 
 ### Work Items
 
-- Review the current `UwbRange` and `RawUWBSignal` messages against long-term sim-to-real needs.
-- Keep `RawUWBSignal` aligned with a future hardware-facing low-level interface.
-- Treat `UwbRange` as a processed simulator-side output unless a stronger sim-to-real need emerges for it.
-- Decide which fields in `RawUWBSignal` are acceptable as hardware-aligned signal metrics and which must move to debug-only outputs.
-- Define a clear contract for:
-  - topic names
-  - namespaces
-  - frame usage
-  - source and destination identifiers
-  - timestamp semantics
-  - quality and validity semantics
-- Separate simulation-only fields from production-like fields where needed.
-- Document the chosen interface so downstream packages can treat it as stable.
+- Keep `RawUWBSignal` aligned with the intended future hardware-facing interface.
+- Keep `UwbRange` clearly documented as a processed simulator helper output.
+- Tighten semantics for:
+  - timestamps
+  - validity/status behavior
+  - quality fields
+  - DS-TWR exchange grouping and failure behavior
+- Document any contract changes before they are introduced.
 
 ### Exit Criteria
 
-- A clear measurement contract exists and is documented.
-- Message semantics are stable enough for downstream package development.
-- Simulation-specific debug fields are explicitly identified.
-- The preferred future-facing low-level interface is clearly identified.
+- Downstream packages can treat the measurement interface as stable.
+- Contract changes are deliberate, documented, and minimal.
 
-## Phase 2: UWB Topology and Sensor Modeling
+## Phase 2: Timing, Scheduling, and Reliability Realism
 
 ### Goal
 
-Make the simulated UWB setup structurally closer to real deployments.
+Improve low-level behavioral realism in ways that materially affect downstream
+range extraction, synchronization, and estimation logic.
 
 ### Work Items
 
-- Add explicit support for per-vehicle UWB node topology.
-- Allow configuration of:
-  - node count per vehicle
-  - node identifiers
-  - body-frame mounting offsets
-  - orientation metadata where relevant
-- Ensure measurement outputs are traceable to specific nodes, not only vehicle names.
-- Extend configuration so future real-hardware layouts can be mirrored in simulation.
-
-### Exit Criteria
-
-- The simulator can represent more than a single implicit UWB node per vehicle.
-- Mounting geometry is configurable and visible in the measurement interface.
-- Downstream packages can reason about node-level rather than only vehicle-level measurements.
-
-## Phase 3: Timing, Scheduling, and Transport Realism
-
-### Goal
-
-Improve behavioral realism in the parts of the low-level measurement pipeline that affect downstream ranging and estimation logic.
-
-### Work Items
-
-- Strengthen the existing timing model with:
+- Strengthen the current timing model with:
   - configurable jitter
-  - burst packet loss
   - stale measurement behavior
   - variable publication cadence
   - per-link reliability effects
-- Add clearer status and validity indicators for downstream consumers.
-- Introduce sequence and diagnostic metadata where useful for correlation and replay.
-- Ensure dropped, delayed, and degraded measurements are observable rather than silently hidden.
-- Prefer expressing these effects first in the low-level UWB-facing interface so downstream packages can own interpretation logic.
+  - burst-loss style behavior where useful
+- Ensure dropped, delayed, and degraded measurements are explicit in published outputs.
+- Improve status/validity semantics for downstream consumers.
+- Add diagnostic metadata where useful for correlation and replay.
 
 ### Exit Criteria
 
 - Timing behavior is configurable and testable.
-- Measurement validity and failure modes are explicit in the published data.
-- Downstream packages can be validated against degraded-link conditions before hardware is available.
+- Failure and degradation modes are explicit rather than hidden.
+- Downstream packages can be stress-tested before hardware exists.
 
-## Phase 4: Channel and Propagation Realism
+## Phase 3: Channel and Propagation Realism
 
 ### Goal
 
-Move from a binary LOS/NLOS model toward a more credible link-behavior model.
+Move beyond a basic LOS/NLOS split toward more credible per-link behavior.
 
 ### Work Items
 
-- Keep Gazebo LOS raycast support as the geometric visibility foundation.
-- Add richer channel-behavior modeling, such as:
+- Keep Gazebo raycast as the geometric visibility foundation.
+- Improve channel behavior with effects such as:
   - obstruction severity
   - distance-sensitive reliability
-  - body shadowing effects
-  - angle-dependent degradation where justified
-  - persistent per-link bias behavior
-- Refine quality-related outputs so they better reflect channel state rather than only synthetic placeholders.
-- Preserve reproducibility by keeping channel parameters externally configurable.
+  - persistent per-link bias
+  - body-shadowing-style degradation where justified
+  - angle-dependent effects if they materially help downstream testing
+- Refine quality-related outputs so they reflect simulated channel state more credibly.
+- Keep all such effects externally configurable and reproducible.
 
 ### Exit Criteria
 
-- The simulator can represent materially different link conditions beyond a single LOS/NLOS decision.
-- Channel-related outputs are useful for downstream robustness testing.
-- Scenario configuration can reproduce known-good and known-bad link conditions.
+- The simulator can represent materially different link conditions beyond a single binary LOS/NLOS result.
+- Channel outputs are useful for downstream robustness testing.
+- Known-good and known-bad scenarios can be reproduced from configuration.
 
-## Phase 5: Debuggability, Logging, and Replay
+## Phase 4: Debuggability, Logging, and Replay
 
 ### Goal
 
-Make simulated measurement streams inspectable, recordable, and reusable outside live Gazebo sessions.
+Make UWB streams inspectable, recordable, and reusable outside live Gazebo sessions.
 
 ### Work Items
 
-- Define a clear logging and replay workflow for UWB outputs.
-- Support replay-driven development for downstream packages.
-- Add evaluation tooling to compare simulated measurements against available ground truth.
-- Expose simulator diagnostics that help distinguish geometry effects, timing effects, and injected noise effects.
+- Define a clear logging workflow for UWB outputs.
+- Define a replay workflow for downstream package development.
+- Add tools to compare simulated measurements against ground truth or simulator diagnostics.
+- Separate geometry effects, timing effects, and injected channel/noise effects in diagnostics where practical.
 
 ### Exit Criteria
 
-- Downstream packages can be tested from recorded simulation data.
+- Downstream packages can be tested from recorded simulation output.
 - Simulator behavior can be analyzed offline.
-- Measurement realism can be evaluated quantitatively rather than only visually.
+- Realism can be evaluated quantitatively, not only visually.
 
-## Phase 6: Sim-to-Real Readiness
+## Phase 5: Sim-to-Real Readiness
 
 ### Goal
 
-Ensure this package remains a useful precursor to later real-hardware integration rather than a simulator-only dead end.
+Keep this package useful as a precursor to real UWB-backed systems instead of a
+Gazebo-only dead end.
 
 ### Work Items
 
-- Align sensor-facing outputs with the intended real-hardware integration path.
-- Keep the future-facing low-level UWB interface close enough to a plausible Raspberry Pi + DW3000 software stack that downstream processing packages can be developed against it now.
-- Minimize assumptions that only hold in Gazebo.
-- Keep real-hardware-only concerns out of this package while preserving compatibility with future drivers.
-- Validate that downstream packages can replace the simulated source with a real source without major architectural changes.
+- Keep sensor-facing outputs aligned with the intended real-hardware integration path.
+- Avoid Gazebo-only assumptions in the consumer-facing contract where possible.
+- Keep real-hardware-only implementation concerns out of this package.
+- Validate that downstream packages can swap simulated and real sources with minimal internal redesign.
 
 ### Exit Criteria
 
 - The package exposes interfaces that are practical to mirror from real hardware.
-- The simulation package remains reusable after the real UWB stack is introduced.
-- Downstream localization and coordination packages can keep most of their internal logic unchanged when moving off simulation.
+- The simulation package remains useful after a real UWB stack exists.
+- Downstream packages can keep most of their internal logic unchanged when moving off simulation.
 
 ## Near-Term Priorities
 
 The highest-priority next steps are:
 
-1. Stabilize the UWB measurement contract.
-2. Clarify that `RawUWBSignal` is the preferred future-facing low-level interface and that `UwbRange` is a processed simulator helper output.
-3. Add explicit node-level topology support.
-4. Strengthen timing and reliability modeling.
-5. Add replay-oriented logging and evaluation support.
+1. Strengthen timing and reliability modeling.
+2. Improve channel and propagation realism.
+3. Add replay-oriented logging and evaluation support.
+4. Keep the low-level UWB-facing contract stable.
 
 ## Out of Scope
 
-The following are intentionally not roadmap targets for this package except where simulator validation strictly requires them:
+The following are intentionally outside this package except where simulator
+validation strictly requires them:
 
 - final TWR solvers
 - localization pipelines
 - swarm state estimation
 - coordination and autonomy logic
 - production UWB hardware drivers
+- multi-node-per-vehicle UWB topology
 
 Those belong in downstream packages that consume the interfaces provided here.
 
 ## Success Condition
 
-`nexus_swarm_sim` should evolve into a package that provides:
+`nexus_swarm_sim` should provide:
 
 - a stable multi-UAV simulation environment
-- credible UWB sensor behavior for downstream development
+- credible UWB behavior for downstream development
 - a low-level UWB-facing interface suitable for downstream signal-processing and range-extraction packages
-- clear interfaces that support later hardware migration
-- enough realism to make early algorithm work meaningful
-- enough separation of concerns to prevent simulator lock-in
+- debugging and replay support that makes realism inspectable
+- clear boundaries that support later migration to real hardware
 
-When that condition is met, downstream packages should be able to develop against this simulator today and transition later to real hardware with limited architectural change.
+When that condition is met, downstream packages should be able to develop
+against this simulator now and transition later to real hardware with limited
+architectural change.
