@@ -15,7 +15,6 @@ This package is the intended bridge between:
 ## Inputs
 
 - `/<vehicle>/uwb/raw_signal`
-- optionally `/<vehicle>/uwb/range`
 - vehicle namespaces and IDs
 - later: real hardware low-level UWB frames or driver outputs
 
