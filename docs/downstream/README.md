@@ -44,23 +44,19 @@ The downstream stack should stay as stable as possible.
 
 ```mermaid
 flowchart TB
-    subgraph Today["Today: Simulation Source"]
-        SIM[nexus_swarm_sim\nSimulated UWB + Vehicle Context]
-        SENSE1[swarm_sensing]
-        LOC1[relative_localization]
-        COORD1[swarm_coordination]
+    SOURCE{Data Source}
+    SIM[nexus_swarm_sim\nSimulated UWB + Vehicle Context]
+    HW[real_uwb_driver\nReal UWB Frames / Driver Output]
+    SENSE[swarm_sensing]
+    LOC[relative_localization]
+    COORD[swarm_coordination]
 
-        SIM --> SENSE1 --> LOC1 --> COORD1
-    end
-
-    subgraph Tomorrow["Tomorrow: Real Hardware Source"]
-        HW[real_uwb_driver\nReal UWB Frames / Driver Output]
-        SENSE2[swarm_sensing]
-        LOC2[relative_localization]
-        COORD2[swarm_coordination]
-
-        HW --> SENSE2 --> LOC2 --> COORD2
-    end
+    SOURCE --> SIM
+    SOURCE --> HW
+    SIM --> SENSE
+    HW --> SENSE
+    SENSE --> LOC
+    LOC --> COORD
 ```
 
 Key idea:
