@@ -5,6 +5,15 @@ This directory contains the package-level documents that define scope, contracts
 ## Architecture
 
 - [architecture/PACKAGE_SCOPE.md](architecture/PACKAGE_SCOPE.md): package ownership, boundaries, non-goals, and intended downstream split
+- [architecture/DOWNSTREAM_PACKAGE_PLAN.md](architecture/DOWNSTREAM_PACKAGE_PLAN.md): mermaid overview of the planned simulator-to-downstream package split
+
+## Downstream Packages
+
+- [downstream/README.md](downstream/README.md): overview of planned external packages and recommended implementation order
+- [downstream/swarm_sensing.md](downstream/swarm_sensing.md): first downstream package, focused on interpreting low-level UWB traffic
+- [downstream/relative_localization.md](downstream/relative_localization.md): planned relative state estimation package
+- [downstream/swarm_coordination.md](downstream/swarm_coordination.md): planned swarm behavior and coordination package
+- [downstream/uwb_tools.md](downstream/uwb_tools.md): planned replay, evaluation, and diagnostics package
 
 ## Contracts
 
