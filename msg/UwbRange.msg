@@ -5,8 +5,8 @@
 Header header
 
 # Source and destination drone IDs
-string src_id      # e.g. "iris0"
-string dst_id      # e.g. "iris1"
+string src_id      # e.g. "nexus/1"
+string dst_id      # e.g. "nexus/2"
 
 # Range measurements
 float64 distance_3d   # 3D Euclidean distance (meters)

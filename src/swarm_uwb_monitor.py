@@ -7,8 +7,8 @@ and processes UWB range data from per-drone topics.
 
 Subscribed Topics:
   - /gazebo/model_states       (Discovery)
-  - /<drone>/uwb/range         (UwbRange)
-  - /<drone>/uwb/raw_signal    (RawUWBSignal)
+  - /<vehicle>/uwb/range       (UwbRange)
+  - /<vehicle>/uwb/raw_signal  (RawUWBSignal)
 
 Monitor Output Topics:
   - /uwb_sim/distance/{pair}    (ground truth 3D distance)
@@ -20,11 +20,23 @@ import rospy
 import math
 import json
 import sys
+import os
 from geometry_msgs.msg import PoseStamped
 from mavros_msgs.msg import State
 from gazebo_msgs.msg import ModelStates
 from std_msgs.msg import Float64, String
 from nexus_swarm_sim.msg import UwbRange, RawUWBSignal
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+HELPER_DIR = os.path.join(os.path.dirname(SCRIPT_DIR), "scripts")
+if HELPER_DIR not in sys.path:
+    sys.path.insert(0, HELPER_DIR)
+
+from vehicle_naming import (
+    model_name_to_public_id,
+    model_name_to_ros_namespace,
+    vehicle_sort_key,
+)
 
 
 class DynamicUWBMonitor:
@@ -34,6 +46,7 @@ class DynamicUWBMonitor:
         drone_prefix = rospy.get_param('/drone_prefix', 'nexus')
         self.model_prefix = rospy.get_param('~model_prefix', drone_prefix)
         self.discovered_drones = set()
+        self.model_to_public_id = {}
         
         self.drone_states = {}
         self.local_positions = {}
@@ -60,47 +73,53 @@ class DynamicUWBMonitor:
     def _discovery_callback(self, msg):
         """Detect new models in Gazebo and setup subscribers dynamically"""
         for name in msg.name:
-            if name.startswith(self.model_prefix) and name not in self.discovered_drones:
+            public_id = model_name_to_public_id(name, self.model_prefix)
+            if public_id == name or public_id in self.discovered_drones:
+                continue
+            if name.startswith(self.model_prefix):
                 self._setup_new_drone(name)
 
-    def _setup_new_drone(self, drone_ns):
+    def _setup_new_drone(self, model_name):
         """Initialize data structures and subscribers for a newly discovered drone"""
-        rospy.loginfo(f"[UWBMonitor] Discovering new drone: {drone_ns}")
-        self.discovered_drones.add(drone_ns)
+        drone_id = model_name_to_public_id(model_name, self.model_prefix)
+        drone_ns = model_name_to_ros_namespace(model_name, self.model_prefix)
+        rospy.loginfo(f"[UWBMonitor] Discovering new drone: {drone_id} (model={model_name}, ns={drone_ns})")
+        self.discovered_drones.add(drone_id)
+        self.model_to_public_id[model_name] = drone_id
         
-        self.drone_states[drone_ns] = State()
-        self.local_positions[drone_ns] = PoseStamped()
+        self.drone_states[drone_id] = State()
+        self.local_positions[drone_id] = PoseStamped()
 
         # Subscribe to drone state (MAVROS)
         rospy.Subscriber(
-            f'/{drone_ns}/mavros/state',
+            f'{drone_ns}/mavros/state',
             State,
             self._state_callback,
-            callback_args=drone_ns
+            callback_args=drone_id
         )
 
         # Subscribe to local position (MAVROS)
         rospy.Subscriber(
-            f'/{drone_ns}/mavros/local_position/pose',
+            f'{drone_ns}/mavros/local_position/pose',
             PoseStamped,
             self._local_position_callback,
-            callback_args=drone_ns
+            callback_args=drone_id
         )
 
         # Subscribe to per-drone processed range topic (Simulator)
         rospy.Subscriber(
-            f'/{drone_ns}/uwb/range',
+            f'{drone_ns}/uwb/range',
             UwbRange,
             self._uwb_range_callback,
-            callback_args=drone_ns
+            callback_args=drone_id
         )
 
         # Subscribe to per-drone raw signal topic (Simulator)
         rospy.Subscriber(
-            f'/{drone_ns}/uwb/raw_signal',
+            f'{drone_ns}/uwb/raw_signal',
             RawUWBSignal,
             self._raw_signal_callback,
-            callback_args=drone_ns
+            callback_args=drone_id
         )
 
     # ------------------------------------------------------------------ #
@@ -147,9 +166,10 @@ class DynamicUWBMonitor:
 
     def _ensure_pair_publishers(self, src, dst):
         key = f"{src}_{dst}"
+        topic_key = key.replace("/", "_")
         if key not in self.dist_pub:
-            self.dist_pub[key] = rospy.Publisher(f'/uwb_sim/distance/{key}', Float64, queue_size=5)
-            self.dist2d_pub[key] = rospy.Publisher(f'/uwb_sim/distance2d/{key}', Float64, queue_size=5)
+            self.dist_pub[key] = rospy.Publisher(f'/uwb_sim/distance/{topic_key}', Float64, queue_size=5)
+            self.dist2d_pub[key] = rospy.Publisher(f'/uwb_sim/distance2d/{topic_key}', Float64, queue_size=5)
         return key
 
     def _render_snapshot(self, lines):
@@ -177,7 +197,7 @@ class DynamicUWBMonitor:
         lines.append("=" * 80)
 
         # Sort for consistent display
-        sorted_drones = sorted(list(self.discovered_drones))
+        sorted_drones = sorted(self.discovered_drones, key=lambda vehicle_id: vehicle_sort_key(vehicle_id, self.model_prefix))
         positions = {ns: self.get_drone_position(ns) for ns in sorted_drones}
 
         for ns in sorted_drones:

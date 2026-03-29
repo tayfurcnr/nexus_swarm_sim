@@ -20,7 +20,7 @@ uint8 FRAME_DATA=5
 Header header
 
 # Identification
-string src_id                  # Source drone: iris0, iris1, iris2
+string src_id                  # Source drone: nexus/1, nexus/2, nexus/3
 string dst_id                  # Destination drone
 bool valid                     # True if downstream may use the sample; False means discard is recommended
 uint8 status_code              # STATUS_* code describing signal condition; degraded states may still be valid

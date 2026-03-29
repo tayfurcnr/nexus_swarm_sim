@@ -39,11 +39,11 @@ Responsibilities:
 - LOS/NLOS and channel-effect simulation
 - runtime dashboard and monitor tools
 
-### `nexus_uwb_processing`
+### `swarm_sensing`
 
 Responsibilities:
 
-- subscribe to `/<vehicle>/uwb/raw_signal`
+- subscribe to `/<vehicle_ns>/uwb/raw_signal`
 - reconstruct DS-TWR exchanges
 - detect incomplete or degraded exchanges
 - derive range-oriented outputs from low-level UWB signal messages
@@ -51,10 +51,13 @@ Responsibilities:
 
 Suggested outputs:
 
-- `/<vehicle>/uwb/range_estimate`
-- `/<vehicle>/uwb/link_status`
+- `/<vehicle_ns>/swarm/sensing/neighbor_measurements`
+- `/<vehicle_ns>/swarm/sensing/link_state`
+- `/<vehicle_ns>/swarm/sensing/exchange_status`
+- `/<vehicle_ns>/swarm/sensing/diagnostics`
+- `/<vehicle_ns>/swarm/sensing/stats`
 
-### `nexus_relative_localization`
+### `relative_localization`
 
 Responsibilities:
 
@@ -65,10 +68,11 @@ Responsibilities:
 
 Suggested outputs:
 
-- `/swarm/relative_pose`
-- `/swarm/relative_state`
+- `/<vehicle_ns>/swarm/localization/relative_pose`
+- `/<vehicle_ns>/swarm/localization/relative_state`
+- `/<vehicle_ns>/swarm/localization/quality`
 
-### `nexus_swarm_coordination`
+### `swarm_coordination`
 
 Responsibilities:
 
@@ -79,11 +83,11 @@ Responsibilities:
 
 Suggested outputs:
 
-- `/swarm/targets`
-- `/swarm/formation_cmd`
+- `/<vehicle_ns>/swarm/coordination/targets`
+- `/<vehicle_ns>/swarm/coordination/formation_cmd`
 - per-vehicle command topics
 
-### `nexus_uwb_tools`
+### `uwb_tools`
 
 Responsibilities:
 
@@ -97,34 +101,35 @@ Responsibilities:
 
 ```mermaid
 flowchart LR
-    A[nexus_swarm_sim\nWorld + Vehicles + UWB Simulation] --> B[nexus_uwb_processing\nDS-TWR + Range Extraction]
-    A --> E[nexus_uwb_tools\nLogging + Replay + Evaluation]
-    B --> C[nexus_relative_localization\nRelative Pose / State Estimation]
-    C --> D[nexus_swarm_coordination\nFormation + Task + Decision Logic]
+    A[nexus_swarm_sim\nWorld + Vehicles + UWB Simulation] --> B[swarm_sensing\nDS-TWR + Link Interpretation]
+    A --> E[uwb_tools\nLogging + Replay + Evaluation]
+    B --> C[relative_localization\nRelative Pose / State Estimation]
+    C --> D[swarm_coordination\nFormation + Task + Decision Logic]
 
-    A --> A1["/<vehicle>/uwb/raw_signal"]
-    A --> A2["/<vehicle>/uwb/range"]
-    B --> B1["/<vehicle>/uwb/range_estimate"]
-    B --> B2["/<vehicle>/uwb/link_status"]
-    C --> C1["/swarm/relative_pose"]
-    C --> C2["/swarm/relative_state"]
-    D --> D1["/swarm/targets"]
-    D --> D2["/swarm/formation_cmd"]
+    A --> A1["/<vehicle_ns>/uwb/raw_signal"]
+    A --> A2["/<vehicle_ns>/uwb/range"]
+    B --> B1["/<vehicle_ns>/swarm/sensing/neighbor_measurements"]
+    B --> B2["/<vehicle_ns>/swarm/sensing/link_state"]
+    B --> B3["/<vehicle_ns>/swarm/sensing/diagnostics"]
+    C --> C1["/<vehicle_ns>/swarm/localization/relative_pose"]
+    C --> C2["/<vehicle_ns>/swarm/localization/relative_state"]
+    D --> D1["/<vehicle_ns>/swarm/coordination/targets"]
+    D --> D2["/<vehicle_ns>/swarm/coordination/formation_cmd"]
 ```
 
 ## Data Flow Summary
 
 1. `nexus_swarm_sim` publishes simulated UWB and vehicle-context data.
-2. `nexus_uwb_processing` turns low-level UWB traffic into usable ranging outputs.
-3. `nexus_relative_localization` turns those outputs into relative state estimates.
-4. `nexus_swarm_coordination` consumes those estimates to make swarm-level decisions.
-5. `nexus_uwb_tools` supports replay, inspection, and offline evaluation across the stack.
+2. `swarm_sensing` turns low-level UWB traffic into usable sensing and link outputs.
+3. `relative_localization` turns those outputs into relative state estimates.
+4. `swarm_coordination` consumes those estimates to make swarm-level decisions.
+5. `uwb_tools` supports replay, inspection, and offline evaluation across the stack.
 
 ## Near-Term Recommendation
 
 If only one downstream package is created first, it should be:
 
-- `nexus_uwb_processing`
+- `swarm_sensing`
 
 Reason:
 

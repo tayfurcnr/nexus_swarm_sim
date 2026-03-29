@@ -25,6 +25,10 @@ vehicles using processed sensing outputs and other vehicle state sources.
 
 ## Candidate Outputs
 
-- `/swarm/relative_pose`
-- `/swarm/relative_state`
-- `/swarm/localization_quality`
+- `/<vehicle_ns>/swarm/localization/relative_pose`
+- `/<vehicle_ns>/swarm/localization/relative_state`
+- `/<vehicle_ns>/swarm/localization/quality`
+
+Example:
+
+- `/nexus/1/swarm/localization/relative_pose`

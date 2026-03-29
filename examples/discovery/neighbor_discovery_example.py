@@ -9,14 +9,23 @@ This node:
 """
 
 import rospy
+import os
+import sys
 from collections import defaultdict
 from gazebo_msgs.msg import ModelStates
 from nexus_swarm_sim.msg import UwbRange
 
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+HELPER_DIR = os.path.join(REPO_ROOT, "scripts")
+if HELPER_DIR not in sys.path:
+    sys.path.insert(0, HELPER_DIR)
+
+from vehicle_naming import model_name_to_public_id, model_name_to_ros_namespace, normalize_public_id
+
 
 class NeighborDiscovery:
-    def __init__(self, drone_id="nexus1", drone_prefix="nexus", topic_suffix="range"):
-        self.drone_id = drone_id
+    def __init__(self, drone_id="nexus/1", drone_prefix="nexus", topic_suffix="range"):
+        self.drone_id = normalize_public_id(drone_id, prefix=drone_prefix)
         self.drone_prefix = drone_prefix
         self.topic_suffix = topic_suffix
 
@@ -38,19 +47,20 @@ class NeighborDiscovery:
 
     def _on_model_states(self, msg):
         for model_name in msg.name:
-            if not model_name.startswith(self.drone_prefix):
+            peer_id = model_name_to_public_id(model_name, self.drone_prefix)
+            if peer_id == model_name:
                 continue
-            if model_name == self.drone_id:
+            if peer_id == self.drone_id:
                 continue
-            if model_name in self.known_subscribers:
+            if peer_id in self.known_subscribers:
                 continue
 
-            topic = f"/{model_name}/uwb/{self.topic_suffix}"
-            self.known_subscribers[model_name] = rospy.Subscriber(
+            topic = f"{model_name_to_ros_namespace(model_name, self.drone_prefix)}/uwb/{self.topic_suffix}"
+            self.known_subscribers[peer_id] = rospy.Subscriber(
                 topic,
                 UwbRange,
                 self._on_ping_received,
-                callback_args=model_name,
+                callback_args=peer_id,
             )
             rospy.loginfo(
                 "[Neighbor Discovery] %s: listening to %s",
@@ -136,7 +146,7 @@ class NeighborDiscovery:
 
 def main():
     rospy.init_node("neighbor_discovery", anonymous=False)
-    drone_id = rospy.get_param("~drone_id", "nexus1")
+    drone_id = rospy.get_param("~drone_id", "nexus/1")
     drone_prefix = rospy.get_param("~drone_prefix", "nexus")
     topic_suffix = rospy.get_param("~topic_suffix", "range")
 

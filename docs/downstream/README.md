@@ -37,6 +37,12 @@ and to keep downstream algorithm packages focused on:
 `nexus_swarm_sim` should publish data.
 Downstream packages should interpret and use that data.
 
+## Namespace Rule
+
+- Gazebo model names may remain flat, for example `nexus1`
+- ROS-facing namespaces and published IDs should be hierarchical, for example `nexus/1`
+- downstream package inputs and outputs should follow the ROS-facing form
+
 ## Sim-to-Real Transition
 
 The intended migration path is that only the lowest data source changes.

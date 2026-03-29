@@ -95,7 +95,8 @@ Default naming:
 |---|---|
 | `vehicle_model` | `iris` |
 | `drone_prefix` | `nexus` |
-| Generated names | `nexus1`, `nexus2`, `nexus3`, ... |
+| Gazebo model names | `nexus1`, `nexus2`, `nexus3`, ... |
+| ROS namespaces / IDs | `nexus/1`, `nexus/2`, `nexus/3`, ... |
 
 ## Requirements
 
@@ -132,5 +133,5 @@ Use the repository documents by purpose:
 - The package itself is expected to live inside a catkin workspace such as `~/swarm_ws/src/nexus_swarm_sim`.
 - On a new machine, prefer the setup script unless you intentionally want a non-SITL workflow.
 - `swarm_uwb.world` loads a Gazebo world plugin that exposes `/uwb_simulator/check_los`; when `/uwb_simulator/use_gazebo_raycast:=true`, UWB LOS decisions come from Gazebo ray casting instead of only the probabilistic fallback.
-- UWB outputs are available on per-vehicle topics such as `/<drone>/uwb/range` and `/<drone>/uwb/raw_signal`, with LOS state included in the published messages.
+- UWB outputs are available on per-vehicle topics such as `/nexus/1/uwb/range` and `/nexus/1/uwb/raw_signal`; Gazebo model names remain flat (`nexus1`) while ROS-facing namespaces are hierarchical (`nexus/1`).
 - If a previous Gazebo instance did not exit cleanly, kill stale `gzserver` and `gzclient` processes before relaunching to avoid port binding conflicts.

@@ -33,15 +33,31 @@ This contract does not cover:
 
 ## Topic Contract
 
+Placeholder note:
+
+- `/<vehicle_ns>/...` means "the ROS namespace of one vehicle"
+- current canonical examples are `/nexus/1/...`, `/nexus/2/...`
+- this document uses `vehicle_ns` as a reusable template, not as an alternative ID format
+
 ### Published consumer topics
 
 Processed simulated range outputs are published per vehicle:
 
-- `/<vehicle>/uwb/range`
+- `/<vehicle_ns>/uwb/range`
+
+Current simulator examples:
+
+- `/nexus/1/uwb/range`
+- `/nexus/2/uwb/range`
 
 Low-level signal-oriented outputs are also published per vehicle:
 
-- `/<vehicle>/uwb/raw_signal`
+- `/<vehicle_ns>/uwb/raw_signal`
+
+Current simulator examples:
+
+- `/nexus/1/uwb/raw_signal`
+- `/nexus/2/uwb/raw_signal`
 
 When `raw_signal_protocol` is set to `ds_twr`, this topic carries a simulated
 double-sided TWR frame exchange sequence rather than a single synthetic frame.
@@ -58,7 +74,12 @@ packages should interpret the absence of an expected frame within the same
 
 Payload injection inputs are accepted per vehicle:
 
-- `/<vehicle>/uwb/tx/payload`
+- `/<vehicle_ns>/uwb/tx/payload`
+
+Current simulator examples:
+
+- `/nexus/1/uwb/tx/payload`
+- `/nexus/2/uwb/tx/payload`
 
 The per-vehicle topic namespace is intentional.
 It keeps the simulator aligned with multi-vehicle ROS namespace structure and allows downstream packages to subscribe vehicle-by-vehicle.
@@ -139,7 +160,7 @@ uwb_node:
 ```
 
 The `id` is currently descriptive only.
-Published message identifiers remain vehicle-level (`nexus1`, `nexus2`, ...), not node-level.
+Published message identifiers remain vehicle-level (`nexus/1`, `nexus/2`, ...), not node-level.
 
 ## Identifier Contract
 
@@ -149,7 +170,8 @@ Published message identifiers remain vehicle-level (`nexus1`, `nexus2`, ...), no
 
 Current convention:
 
-- vehicle namespace string such as `nexus1`, `nexus2`, `iris0`, etc.
+- hierarchical vehicle namespace string such as `nexus/1`, `nexus/2`
+- Gazebo model/entity names may remain flat (`nexus1`, `nexus2`) internally, but published ROS message IDs use the hierarchical form
 
 Current single-node interpretation:
 
@@ -286,7 +308,7 @@ These are appropriate for lower-level experimentation and for future hardware-al
 `frame_payload` should be interpreted as raw payload bytes carried by the received UWB frame.
 It is not application-decoded by this package.
 Any message parsing, schema interpretation, or higher-level meaning belongs to downstream packages.
-The payload bytes currently come from the latest message published to `/<vehicle>/uwb/tx/payload`.
+The payload bytes currently come from the latest message published to `/<vehicle_ns>/uwb/tx/payload`.
 
 `tx_timestamp_ps` and `rx_timestamp_ps` are simulator-derived picosecond timestamps intended to be closer to a driver-facing timestamp contract than `toa_ns` alone.
 `toa_ns` remains as a convenience field derived from the same simulated timing path.
@@ -346,7 +368,7 @@ If needed later, such data should live in separate debug-only topics or messages
 
 For most downstream packages, the recommended entry point is:
 
-- subscribe to `/<vehicle>/uwb/range`
+- subscribe to `/<vehicle_ns>/uwb/range`
 
 This keeps normal simulator integration simple.
 
@@ -354,7 +376,7 @@ This keeps normal simulator integration simple.
 
 For analysis, inspection, low-level experimentation, or future hardware-aligned integration work:
 
-- subscribe to `/<vehicle>/uwb/raw_signal`
+- subscribe to `/<vehicle_ns>/uwb/raw_signal`
 
 ### Recommended truth dependency policy
 

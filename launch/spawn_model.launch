@@ -1,16 +1,18 @@
 <?xml version="1.0"?>
 <launch>
     <arg name="drone_prefix" default="nexus"/>
-    <arg name="drone_id" default="$(eval arg('drone_prefix') + '1')"/>
+    <arg name="drone_index" default="1"/>
+    <arg name="drone_id" default="$(eval arg('drone_prefix') + '/' + str(arg('drone_index')))"/>
+    <arg name="drone_model_name" default="$(eval arg('drone_prefix') + str(arg('drone_index')))"/>
     <arg name="model_file" default="/usr/share/gazebo-11/models/iris_with_standoffs/model.sdf"/>
     <arg name="x" default="0.0"/>
     <arg name="y" default="0.0"/>
     <arg name="z" default="0.2"/>
 
     <node
-        name="spawn_$(arg drone_id)"
+        name="spawn_$(arg drone_model_name)"
         pkg="gazebo_ros"
         type="spawn_model"
         output="screen"
-        args="-sdf -file $(arg model_file) -model $(arg drone_id) -x $(arg x) -y $(arg y) -z $(arg z)"/>
+        args="-sdf -file $(arg model_file) -model $(arg drone_model_name) -robot_namespace /$(arg drone_id) -x $(arg x) -y $(arg y) -z $(arg z)"/>
 </launch>

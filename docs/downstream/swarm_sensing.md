@@ -14,9 +14,20 @@ This package is the intended bridge between:
 
 ## Inputs
 
-- `/<vehicle>/uwb/raw_signal`
-- vehicle namespaces and IDs
+Placeholder note:
+
+- `/<vehicle_ns>/...` means "the ROS namespace of one vehicle"
+- current canonical examples are `/nexus/1/...`, `/nexus/2/...`
+- this document uses `vehicle_ns` as a reusable template, not as a second naming scheme
+
+- `/<vehicle_ns>/uwb/raw_signal`
+- vehicle namespaces and IDs such as `nexus/1`, `nexus/2`
 - later: real hardware low-level UWB frames or driver outputs
+
+Current simulator example inputs:
+
+- `/nexus/1/uwb/raw_signal`
+- `/nexus/2/uwb/raw_signal`
 
 ## Responsibilities
 
@@ -36,10 +47,21 @@ This package is the intended bridge between:
 
 ## Candidate Outputs
 
-- `/<vehicle>/uwb/range_estimate`
-- `/<vehicle>/uwb/link_status`
-- `/swarm/neighbors`
-- `/swarm/sensing_health`
+Canonical topic style:
+
+- template form: `/<vehicle_ns>/swarm/sensing/...`
+- current simulator examples: `/nexus/1/swarm/sensing/...`, `/nexus/2/swarm/sensing/...`
+
+- `/<vehicle_ns>/swarm/sensing/neighbor_measurements`
+- `/<vehicle_ns>/swarm/sensing/link_state`
+- `/<vehicle_ns>/swarm/sensing/exchange_status`
+- `/<vehicle_ns>/swarm/sensing/diagnostics`
+- `/<vehicle_ns>/swarm/sensing/stats`
+
+Recommended topic shape:
+
+- all outputs stay under the vehicle namespace
+- example vehicle-scoped topic: `/nexus/1/swarm/sensing/link_state`
 
 ## Why It Comes First
 

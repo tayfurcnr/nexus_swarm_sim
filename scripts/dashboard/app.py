@@ -3,6 +3,14 @@ import socket
 import threading
 import time
 from http.server import ThreadingHTTPServer
+from vehicle_naming import (
+    build_public_id,
+    model_name_to_public_id,
+    model_name_to_ros_namespace,
+    normalize_public_id,
+    public_id_to_ros_namespace,
+    vehicle_sort_key,
+)
 
 try:
     import rospy
@@ -118,7 +126,7 @@ class SwarmDashboard:
         now = time.time()
         for index in range(1, 6):
             slot = index - 1
-            drone_id = f"{self.drone_prefix}{index}"
+            drone_id = build_public_id(self.drone_prefix, index)
             self._discovered.add(drone_id)
             self._vehicle_states[drone_id] = {
                 "connected": True,
@@ -148,7 +156,7 @@ class SwarmDashboard:
         while True:
             now = time.time()
             with self._lock:
-                sorted_ids = sorted(self._discovered)
+                sorted_ids = sorted(self._discovered, key=lambda vehicle_id: vehicle_sort_key(vehicle_id, self.drone_prefix))
                 for index, drone_id in enumerate(sorted_ids):
                     phase = now - start + index * 0.35
                     dx = math.cos(phase) * 0.35
@@ -195,52 +203,54 @@ class SwarmDashboard:
         current_time = time.time()
         with self._lock:
             for index, name in enumerate(msg.name):
-                if not name.startswith(self.drone_prefix):
+                drone_id = model_name_to_public_id(name, self.drone_prefix)
+                if drone_id == name:
                     continue
+                drone_ns = model_name_to_ros_namespace(name, self.drone_prefix)
                 pose = msg.pose[index]
-                self._vehicle_positions[name] = {
+                self._vehicle_positions[drone_id] = {
                     "x": round(pose.position.x, 3),
                     "y": round(pose.position.y, 3),
                     "z": round(pose.position.z, 3),
                 }
-                self._vehicle_headings[name] = round(self._yaw_from_quaternion(pose.orientation), 1)
-                self._vehicle_last_seen[name] = current_time
-                if name in self._discovered:
+                self._vehicle_headings[drone_id] = round(self._yaw_from_quaternion(pose.orientation), 1)
+                self._vehicle_last_seen[drone_id] = current_time
+                if drone_id in self._discovered:
                     continue
-                self._discovered.add(name)
-                self._vehicle_states[name] = {
+                self._discovered.add(drone_id)
+                self._vehicle_states[drone_id] = {
                     "connected": False,
                     "armed": False,
                     "guided": False,
                     "mode": "N/A",
                     "system_status": 0,
                 }
-                self._vehicle_gps[name] = None
-                self._vehicle_fcu_urls[name] = self._resolve_fcu_url(name)
-                self._vehicle_subscribers[name] = [
+                self._vehicle_gps[drone_id] = None
+                self._vehicle_fcu_urls[drone_id] = self._resolve_fcu_url(drone_id)
+                self._vehicle_subscribers[drone_id] = [
                     rospy.Subscriber(
-                        f"/{name}/mavros/state",
+                        f"{drone_ns}/mavros/state",
                         State,
                         self._mavros_state_callback,
-                        callback_args=name,
+                        callback_args=drone_id,
                         queue_size=10,
                     ),
                     rospy.Subscriber(
-                        f"/{name}/uwb/range",
+                        f"{drone_ns}/uwb/range",
                         UwbRange,
                         self._uwb_range_callback,
-                        callback_args=name,
+                        callback_args=drone_id,
                         queue_size=50,
                     ),
                     rospy.Subscriber(
-                        f"/{name}/mavros/global_position/global",
+                        f"{drone_ns}/mavros/global_position/global",
                         NavSatFix,
                         self._gps_callback,
-                        callback_args=name,
+                        callback_args=drone_id,
                         queue_size=10,
                     ),
                 ]
-                self._log("[SwarmDashboard] Tracking vehicle %s", name)
+                self._log("[SwarmDashboard] Tracking vehicle %s (model=%s)", drone_id, name)
 
     def _mavros_state_callback(self, msg, drone_id):
         with self._lock:
@@ -283,15 +293,18 @@ class SwarmDashboard:
         now = time.time()
         with self._lock:
             vehicles = []
-            for drone_id in sorted(self._discovered):
+            for drone_id in sorted(self._discovered, key=lambda vehicle_id: vehicle_sort_key(vehicle_id, self.drone_prefix)):
                 position = self._vehicle_positions.get(drone_id, {"x": 0.0, "y": 0.0, "z": 0.0})
                 state = self._vehicle_states.get(drone_id, {})
                 index = self._extract_index(drone_id)
+                model_name = self._public_id_to_model_name(drone_id)
                 vehicles.append(
                     {
                         "id": drone_id,
-                        "label": f"NEXUS #{index}" if index >= 0 else drone_id.upper(),
-                        "namespace": f"/{drone_id}",
+                        "label": drone_id,
+                        "model_name": model_name,
+                        "short_label": f"{self.drone_prefix.upper()} #{index}" if index >= 0 else drone_id.upper(),
+                        "namespace": public_id_to_ros_namespace(drone_id),
                         "host_ip": self.machine_ip,
                         "hostname": self.machine_hostname,
                         "fcu_url": self._vehicle_fcu_urls.get(drone_id, "N/A"),
@@ -336,7 +349,8 @@ class SwarmDashboard:
         if vehicle_id not in self._discovered:
             raise ValueError(f"Unknown vehicle: {vehicle_id}")
 
-        namespace = f"/{vehicle_id}/mavros"
+        vehicle_id = normalize_public_id(vehicle_id, prefix=self.drone_prefix)
+        namespace = f"{public_id_to_ros_namespace(vehicle_id)}/mavros"
         if command == "arm":
             service_name = f"{namespace}/cmd/arming"
             rospy.wait_for_service(service_name, timeout=5.0)
@@ -426,23 +440,29 @@ class SwarmDashboard:
 
     @staticmethod
     def _extract_index(drone_id):
-        suffix = ""
-        for char in reversed(drone_id):
-            if not char.isdigit():
-                break
-            suffix = char + suffix
-        return int(suffix) if suffix else -1
+        normalized = normalize_public_id(drone_id)
+        tail = normalized.split("/")[-1]
+        return int(tail) if tail.isdigit() else -1
 
     @staticmethod
     def _resolve_fcu_url(drone_id):
+        namespace = public_id_to_ros_namespace(drone_id)
         for param_name in (
-            f"/{drone_id}/mavros/fcu_url",
-            f"/{drone_id}/mavros_bridge_launcher/fcu_url",
+            f"{namespace}/mavros/fcu_url",
+            f"{namespace}/mavros_bridge_launcher/fcu_url",
         ):
             value = rospy.get_param(param_name, "")
             if value:
                 return str(value)
         return "N/A"
+
+    @staticmethod
+    def _public_id_to_model_name(drone_id):
+        normalized = normalize_public_id(drone_id)
+        parts = normalized.split("/")
+        if len(parts) == 2 and parts[1].isdigit():
+            return f"{parts[0]}{parts[1]}"
+        return normalized.replace("/", "")
 
     @staticmethod
     def _compute_extents(vehicles):

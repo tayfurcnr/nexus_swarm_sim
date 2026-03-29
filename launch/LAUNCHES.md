@@ -150,11 +150,9 @@ Dashboard defaults:
 - `dashboard_host:=0.0.0.0`
 - `dashboard_port:=8787`
 
-Generated vehicle names follow the pattern:
-- `nexus1`
-- `nexus2`
-- `nexus3`
-- ...
+Generated vehicle identity now has two forms:
+- Gazebo model/entity name: `nexus1`, `nexus2`, `nexus3`, ...
+- ROS namespace and published ID: `nexus/1`, `nexus/2`, `nexus/3`, ...
 
 Operational note:
 - If Gazebo was left running from an earlier session, stop stale `gzserver` and `gzclient` processes before relaunching or Gazebo master port binding can fail.

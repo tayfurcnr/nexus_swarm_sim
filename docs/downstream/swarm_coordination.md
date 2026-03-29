@@ -30,6 +30,10 @@ instead of consuming simulator internals directly.
 
 ## Candidate Outputs
 
-- `/swarm/targets`
-- `/swarm/formation_cmd`
+- `/<vehicle_ns>/swarm/coordination/targets`
+- `/<vehicle_ns>/swarm/coordination/formation_cmd`
 - per-vehicle setpoints or task commands
+
+Example:
+
+- `/nexus/1/swarm/coordination/targets`

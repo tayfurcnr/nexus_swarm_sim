@@ -1,4 +1,5 @@
 #include "uwb_simulator.h"
+#include <cctype>
 #include <ctime>
 #include <cstdlib>
 #include <algorithm>
@@ -200,6 +201,42 @@ bool UwbSimulator::should_publish_measurement(const range_publisher& rp)
     return (counter % publish_interval) == 0;
 }
 
+int UwbSimulator::parse_model_index(const std::string& model_name) const
+{
+    if (model_name.find(model_prefix_) != 0)
+    {
+        return -1;
+    }
+
+    std::string suffix = model_name.substr(model_prefix_.size());
+    if (suffix.empty())
+    {
+        return -1;
+    }
+
+    if (!std::all_of(suffix.begin(), suffix.end(), [](unsigned char ch) { return std::isdigit(ch) != 0; }))
+    {
+        return -1;
+    }
+
+    return std::stoi(suffix);
+}
+
+std::string UwbSimulator::public_vehicle_id(const std::string& model_name) const
+{
+    int index = parse_model_index(model_name);
+    if (index < 0)
+    {
+        return model_name;
+    }
+    return model_prefix_ + "/" + std::to_string(index);
+}
+
+std::string UwbSimulator::ros_namespace_for_model(const std::string& model_name) const
+{
+    return "/" + public_vehicle_id(model_name);
+}
+
 // ===== Core Simulator =====
 
 void UwbSimulator::ground_truth_callback(const gazebo_msgs::ModelStates::ConstPtr& msg)
@@ -226,7 +263,7 @@ void UwbSimulator::check_for_new_models(const std::vector<std::string>& models)
     for (const std::string& model : models)
     {
         // Skip models that don't match the prefix or are already discovered
-        if (model.find(model_prefix_) != 0 || discovered_models_.count(model) > 0)
+        if (parse_model_index(model) < 0 || discovered_models_.count(model) > 0)
         {
             continue;
         }
@@ -250,9 +287,10 @@ void UwbSimulator::check_for_new_models(const std::vector<std::string>& models)
         }
 
         // Create publishers for this new drone
-        std::string range_topic = "/" + model + pub_topic_prefix_ + "/range";
-        std::string raw_topic = "/" + model + pub_topic_prefix_ + "/raw_signal";
-        std::string tx_payload_topic = "/" + model + pub_topic_prefix_ + "/tx/payload";
+        std::string vehicle_ns = ros_namespace_for_model(model);
+        std::string range_topic = vehicle_ns + pub_topic_prefix_ + "/range";
+        std::string raw_topic = vehicle_ns + pub_topic_prefix_ + "/raw_signal";
+        std::string tx_payload_topic = vehicle_ns + pub_topic_prefix_ + "/tx/payload";
         
         drone_tx_publishers_[model] = nh_.advertise<nexus_swarm_sim::UwbRange>(range_topic, 100);
         drone_raw_signal_publishers_[model] = nh_.advertise<nexus_swarm_sim::RawUWBSignal>(raw_topic, 100);
@@ -273,11 +311,11 @@ void UwbSimulator::check_for_new_models(const std::vector<std::string>& models)
             if (model == other) continue;
 
             // Add pairs in BOTH directions (TWR)
-            // iris3 -> iris0, iris3 -> iris1...
+            // model -> other flat Gazebo model name
             range_publisher rpub_new_src(model, other, 0, 0);
             uwb_publishers_.insert(std::pair<range_publisher, ros::Publisher>(rpub_new_src, ros::Publisher())); // Placeholder for logic compatibility
             
-            // iris0 -> iris3, iris1 -> iris3...
+            // other flat Gazebo model -> model
             range_publisher rpub_new_dst(other, model, 0, 0);
             uwb_publishers_.insert(std::pair<range_publisher, ros::Publisher>(rpub_new_dst, ros::Publisher()));
 
@@ -438,8 +476,8 @@ void UwbSimulator::publish_ranges(const ros::TimerEvent& event)
         nexus_swarm_sim::UwbRange uwb_msg;
         uwb_msg.header.stamp = publish_stamp;
         uwb_msg.header.frame_id = "map";
-        uwb_msg.src_id = elem.first.ori_node;
-        uwb_msg.dst_id = elem.first.end_node;
+        uwb_msg.src_id = public_vehicle_id(elem.first.ori_node);
+        uwb_msg.dst_id = public_vehicle_id(elem.first.end_node);
         uwb_msg.distance_3d = measured_distance_3d;
         uwb_msg.distance_2d = measured_distance_2d;
         uwb_msg.sigma_m = sigma;
@@ -654,8 +692,8 @@ void UwbSimulator::publish_raw_signal_frame(const std::string& tx_drone,
         frame_stamp.fromNSec(tx_timestamp_ps / 1000ULL);
         raw_msg.header.stamp = frame_stamp;
     raw_msg.header.frame_id = "map";
-    raw_msg.src_id = tx_drone;
-    raw_msg.dst_id = rx_drone;
+    raw_msg.src_id = public_vehicle_id(tx_drone);
+    raw_msg.dst_id = public_vehicle_id(rx_drone);
     raw_msg.status_code = classify_raw_signal_status(snr_db, los, outlier_injected, sts_quality);
     raw_msg.valid = is_raw_signal_valid(raw_msg.status_code);
     raw_msg.toa_ns = toa_ns;

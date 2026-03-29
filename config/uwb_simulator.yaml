@@ -2,7 +2,7 @@
 
 # Naming / discovery
 vehicle_model: "iris"            # Underlying Gazebo/SITL vehicle model
-drone_prefix: "nexus"            # Prefix used for spawned drone names / namespaces
+drone_prefix: "nexus"            # Prefix used for flat Gazebo model names (nexus1) and ROS namespaces (nexus/1)
 model_prefix: "nexus"            # Prefix the UWB simulator discovers from /gazebo/model_states
 
 # Topics

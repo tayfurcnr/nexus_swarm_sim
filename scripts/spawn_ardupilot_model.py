@@ -19,7 +19,7 @@ def _gimbal_model_source_path():
     raise FileNotFoundError("gimbal_small_2d model directory not found in known Gazebo model paths")
 
 
-def _prepare_namespaced_gimbal_model(model_name):
+def _prepare_namespaced_gimbal_model(model_name, robot_namespace):
     source_dir = _gimbal_model_source_path()
     target_root = f"/tmp/nexus_swarm_sim_models/{model_name}"
     target_dir = os.path.join(target_root, "gimbal_small_2d")
@@ -35,7 +35,7 @@ def _prepare_namespaced_gimbal_model(model_name):
     gimbal_model = gimbal_model.replace(
         "<plugin name=\"camera_controller\" filename=\"libgazebo_ros_camera.so\">",
         "<plugin name=\"camera_controller\" filename=\"libgazebo_ros_camera.so\">\n"
-        f"          <robotNamespace>/{model_name}</robotNamespace>",
+        f"          <robotNamespace>{robot_namespace}</robotNamespace>",
         1,
     )
     gimbal_model = gimbal_model.replace(
@@ -50,7 +50,7 @@ def _prepare_namespaced_gimbal_model(model_name):
     return target_root, target_dir
 
 
-def render_model(template_path, model_name, to_ardupilot_port, from_ardupilot_port, enable_gimbal=True):
+def render_model(template_path, model_name, robot_namespace, to_ardupilot_port, from_ardupilot_port, enable_gimbal=True):
     with open(template_path, "r", encoding="utf-8") as f:
         content = f.read()
 
@@ -67,7 +67,7 @@ def render_model(template_path, model_name, to_ardupilot_port, from_ardupilot_po
 
     gimbal_model_root = ""
     if enable_gimbal:
-        gimbal_model_root, gimbal_model_dir = _prepare_namespaced_gimbal_model(model_name)
+        gimbal_model_root, gimbal_model_dir = _prepare_namespaced_gimbal_model(model_name, robot_namespace)
         content = content.replace(
             "<uri>model://gimbal_small_2d</uri>",
             f"<uri>file://{gimbal_model_dir}</uri>",
@@ -113,6 +113,7 @@ def main():
         rospy.get_param("~template_path", "~/ardupilot_gazebo/models/iris_with_ardupilot/model.sdf")
     )
     model_name = rospy.get_param("~model_name")
+    robot_namespace = rospy.get_param("~robot_namespace", f"/{model_name}")
     reference_frame = rospy.get_param("~reference_frame", "world")
     to_ardupilot_port = int(rospy.get_param("~to_ardupilot_port"))
     from_ardupilot_port = int(rospy.get_param("~from_ardupilot_port"))
@@ -126,6 +127,7 @@ def main():
     model_xml, gimbal_model_root = render_model(
         template_path,
         model_name,
+        robot_namespace,
         to_ardupilot_port,
         from_ardupilot_port,
         enable_gimbal=enable_gimbal,
@@ -162,7 +164,7 @@ def main():
     )
     # Provide a per-vehicle ROS namespace so Gazebo ROS plugins inside the model
     # don't all publish into the global /gimbal namespace in multi-vehicle runs.
-    resp = spawn_model(model_name, model_xml, f"/{model_name}", pose, reference_frame)
+    resp = spawn_model(model_name, model_xml, robot_namespace, pose, reference_frame)
     if not resp.success:
         rospy.logfatal("Failed to spawn %s: %s", model_name, resp.status_message)
         return 1

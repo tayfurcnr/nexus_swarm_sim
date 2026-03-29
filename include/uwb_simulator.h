@@ -201,10 +201,10 @@ class UwbSimulator
         std::map<range_publisher, ros::Publisher> uwb_publishers_;  // Legacy debug publishers (optional)
         
         // Drone-specific publishers (each drone publishes its own TX - processed distances)
-        std::map<std::string, ros::Publisher> drone_tx_publishers_;  // /uwb/iris0/range, /uwb/iris1/range, etc.
+        std::map<std::string, ros::Publisher> drone_tx_publishers_;  // /nexus/1/uwb/range, /nexus/2/uwb/range, etc.
         
         // Drone-specific raw signal publishers (PRIMARY - for signal processing algorithms)
-        std::map<std::string, ros::Publisher> drone_raw_signal_publishers_;  // /uwb/iris0/raw_signal, etc.
+        std::map<std::string, ros::Publisher> drone_raw_signal_publishers_;  // /nexus/1/uwb/raw_signal, etc.
         std::map<std::string, ros::Subscriber> drone_tx_payload_subscribers_;
         std::map<std::string, std::vector<uint8_t>> drone_tx_payload_cache_;
         std::map<std::string, uint16_t> drone_frame_sequence_counters_;
@@ -215,6 +215,9 @@ class UwbSimulator
         void ground_truth_callback(const gazebo_msgs::ModelStates::ConstPtr& msg);
         void check_for_new_models(const std::vector<std::string>& models);
         void tx_payload_callback(const std_msgs::UInt8MultiArray::ConstPtr& msg, const std::string& drone_id);
+        int parse_model_index(const std::string& model_name) const;
+        std::string public_vehicle_id(const std::string& model_name) const;
+        std::string ros_namespace_for_model(const std::string& model_name) const;
 
         // ===== DW3000-Realistic Modeling Functions =====
         

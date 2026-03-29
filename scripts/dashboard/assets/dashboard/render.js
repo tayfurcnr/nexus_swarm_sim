@@ -4,6 +4,13 @@ import { renderMap } from "./map.js";
 import { getSelectedVehicle } from "./select.js";
 import { state } from "./state.js";
 
+function identitySubtitle(vehicle) {
+  const parts = [];
+  if (vehicle.namespace) parts.push(vehicle.namespace);
+  if (vehicle.model_name) parts.push(`model ${vehicle.model_name}`);
+  return parts.join(" · ");
+}
+
 export function renderSystem(data) {
   const signature = JSON.stringify({
     host: data.host,
@@ -69,11 +76,11 @@ export function renderVehicleList(data, onSelect, options = {}) {
     const html = `
       <div class="vehicle-dot ${vehicle.state?.connected ? "ok" : ""}"></div>
       <div class="vehicle-main">
-        <small>${escapeHtml(vehicle.namespace ?? "--")}</small>
+        <small>${escapeHtml(vehicle.short_label ?? vehicle.label)}</small>
         <strong>${escapeHtml(vehicle.label)}</strong>
       </div>
       <div class="vehicle-meta">
-        ${vehicle.state?.connected ? "CONNECTED" : "NO FCU"}<br>
+        ${vehicle.state?.connected ? "CONNECTED" : "NO FCU"} · ${escapeHtml(vehicle.model_name ?? "--")}<br>
         ${fmt(vehicle.position?.x)}, ${fmt(vehicle.position?.y)}, ${fmt(vehicle.position?.z)}
       </div>
     `;
@@ -144,7 +151,7 @@ export function renderVehicleDetail(data, onCommand) {
                 <div class="detail-name">${escapeHtml(vehicle.label)}</div>
                 <span class="dossier-state">${escapeHtml(navState)}</span>
               </div>
-              <div class="dossier-namespace">${escapeHtml(vehicle.namespace ?? "--")}</div>
+              <div class="dossier-namespace">${escapeHtml(identitySubtitle(vehicle) || "--")}</div>
             </div>
             <div class="dossier-tags">
               <span class="dossier-tag ${vehicle.state?.connected ? "is-live" : "is-cold"}">${escapeHtml(telemetryState)}</span>
@@ -323,7 +330,7 @@ export function renderCommandPanel(data, onCommand, onBatchCommand) {
       <div class="command-head">
         <div>
           <div class="command-title">${escapeHtml(vehicle.label)}</div>
-          <div class="command-sub">${escapeHtml(vehicle.namespace ?? "--")} · ${connected ? "FCU Connected" : "No FCU Link"}</div>
+          <div class="command-sub">${escapeHtml(identitySubtitle(vehicle) || "--")} · ${connected ? "FCU Connected" : "No FCU Link"}</div>
         </div>
         <span class="dossier-tag ${connected ? "is-live" : "is-cold"}">${escapeHtml(vehicle.state?.mode || "N/A")}</span>
       </div>

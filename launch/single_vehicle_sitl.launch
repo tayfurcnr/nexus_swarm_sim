@@ -4,7 +4,10 @@
     <arg name="headless" default="false" />
     <arg name="use_sim_time" default="true" />
     <arg name="drone_prefix" default="nexus" />
-    <arg name="drone_id" default="$(eval arg('drone_prefix') + '1')" />
+    <arg name="drone_index" default="1" />
+    <arg name="drone_id" default="$(eval arg('drone_prefix') + '/' + str(arg('drone_index')))" />
+    <arg name="drone_model_name" default="$(eval arg('drone_prefix') + str(arg('drone_index')))" />
+    <arg name="drone_ns" default="$(eval '/' + arg('drone_id'))" />
     <arg name="model_prefix" default="iris_demo" />
     <arg name="scenario_config" default="$(find nexus_swarm_sim)/config/uwb_simulator.yaml" />
     <arg name="ardupilot_root" default="$(env HOME)/ardupilot" />
@@ -39,7 +42,10 @@
 
     <include file="$(find nexus_swarm_sim)/launch/spawn_sitl.launch">
         <arg name="drone_prefix" value="$(arg drone_prefix)" />
+        <arg name="drone_index" value="$(arg drone_index)" />
         <arg name="drone_id" value="$(arg drone_id)" />
+        <arg name="drone_model_name" value="$(arg drone_model_name)" />
+        <arg name="drone_ns" value="$(arg drone_ns)" />
         <arg name="instance" value="$(arg sitl_instance)" />
         <arg name="sys_id" value="$(arg sitl_sysid)" />
         <arg name="x" value="0.0" />

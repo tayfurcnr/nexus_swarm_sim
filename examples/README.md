@@ -44,11 +44,11 @@ Purpose:
 
 Run:
 ```bash
-rosrun nexus_swarm_sim neighbor_discovery_example.py _drone_id:=nexus1 _drone_prefix:=nexus
+rosrun nexus_swarm_sim neighbor_discovery_example.py _drone_id:=nexus/1 _drone_prefix:=nexus
 ```
 
 Useful params:
-- `_drone_id:=nexus1`
+- `_drone_id:=nexus/1`
 - `_drone_prefix:=nexus`
 - `_topic_suffix:=range`
 - `_max_range_m:=50.0`
@@ -66,16 +66,16 @@ Purpose:
 
 Run:
 ```bash
-rosrun nexus_swarm_sim raw_dstwr_exchange_consumer_example.py _drone_id:=nexus1 _drone_prefix:=nexus
+rosrun nexus_swarm_sim raw_dstwr_exchange_consumer_example.py _drone_id:=nexus/1 _drone_prefix:=nexus
 ```
 
 Useful params:
-- `_drone_id:=nexus1`
+- `_drone_id:=nexus/1`
 - `_drone_prefix:=nexus`
 - `_exchange_timeout_s:=0.75`
 
 Input topics:
-- `/<drone>/uwb/raw_signal`
+- `/<vehicle>/uwb/raw_signal`, for example `/nexus/1/uwb/raw_signal`
 
 Notes:
 - Complete exchanges require `POLL`, `RESP`, and `FINAL`.
@@ -90,10 +90,10 @@ roslaunch nexus_swarm_sim full_swarm.launch num_drones:=3 vehicle_model:=iris dr
 
 Terminal 2:
 ```bash
-rosrun nexus_swarm_sim raw_dstwr_exchange_consumer_example.py _drone_id:=nexus1 _drone_prefix:=nexus
+rosrun nexus_swarm_sim raw_dstwr_exchange_consumer_example.py _drone_id:=nexus/1 _drone_prefix:=nexus
 ```
 
 Terminal 3:
 ```bash
-rosrun nexus_swarm_sim neighbor_discovery_example.py _drone_id:=nexus1 _drone_prefix:=nexus
+rosrun nexus_swarm_sim neighbor_discovery_example.py _drone_id:=nexus/1 _drone_prefix:=nexus
 ```

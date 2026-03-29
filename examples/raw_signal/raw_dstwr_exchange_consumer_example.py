@@ -8,10 +8,19 @@ one monitored vehicle.
 """
 
 from collections import defaultdict
+import os
+import sys
 
 import rospy
 from gazebo_msgs.msg import ModelStates
 from nexus_swarm_sim.msg import RawUWBSignal
+
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+HELPER_DIR = os.path.join(REPO_ROOT, "scripts")
+if HELPER_DIR not in sys.path:
+    sys.path.insert(0, HELPER_DIR)
+
+from vehicle_naming import model_name_to_public_id, model_name_to_ros_namespace, normalize_public_id
 
 
 FRAME_NAMES = {
@@ -25,8 +34,8 @@ FRAME_NAMES = {
 
 
 class DstwrExchangeConsumer:
-    def __init__(self, drone_id="nexus1", drone_prefix="nexus", exchange_timeout_s=0.75):
-        self.drone_id = drone_id
+    def __init__(self, drone_id="nexus/1", drone_prefix="nexus", exchange_timeout_s=0.75):
+        self.drone_id = normalize_public_id(drone_id, prefix=drone_prefix)
         self.drone_prefix = drone_prefix
         self.exchange_timeout_s = exchange_timeout_s
 
@@ -47,17 +56,18 @@ class DstwrExchangeConsumer:
 
     def _on_model_states(self, msg):
         for model_name in msg.name:
-            if not model_name.startswith(self.drone_prefix):
+            peer_id = model_name_to_public_id(model_name, self.drone_prefix)
+            if peer_id == model_name:
                 continue
-            if model_name in self.known_subscribers:
+            if peer_id in self.known_subscribers:
                 continue
 
-            topic = f"/{model_name}/uwb/raw_signal"
-            self.known_subscribers[model_name] = rospy.Subscriber(
+            topic = f"{model_name_to_ros_namespace(model_name, self.drone_prefix)}/uwb/raw_signal"
+            self.known_subscribers[peer_id] = rospy.Subscriber(
                 topic,
                 RawUWBSignal,
                 self._on_raw_signal,
-                callback_args=model_name,
+                callback_args=peer_id,
             )
             rospy.loginfo("[DSTWRConsumer] %s: listening to %s", self.drone_id, topic)
 
@@ -167,7 +177,7 @@ class DstwrExchangeConsumer:
 def main():
     rospy.init_node("raw_dstwr_exchange_consumer_example", anonymous=False)
 
-    drone_id = rospy.get_param("~drone_id", "nexus1")
+    drone_id = rospy.get_param("~drone_id", "nexus/1")
     drone_prefix = rospy.get_param("~drone_prefix", "nexus")
     exchange_timeout_s = rospy.get_param("~exchange_timeout_s", 0.75)
 

@@ -2,7 +2,10 @@
 <launch>
     <arg name="vehicle_model" default="iris" />
     <arg name="drone_prefix" default="nexus" />
-    <arg name="drone_id" default="$(eval arg('drone_prefix') + '1')" />
+    <arg name="drone_index" default="1" />
+    <arg name="drone_id" default="$(eval arg('drone_prefix') + '/' + str(arg('drone_index')))" />
+    <arg name="drone_model_name" default="$(eval arg('drone_prefix') + str(arg('drone_index')))" />
+    <arg name="drone_ns" default="$(eval '/' + arg('drone_id'))" />
     <arg name="instance" default="0" />
     <arg name="sys_id" default="1" />
     <arg name="x" default="0.0" />
@@ -15,7 +18,7 @@
     <arg name="mavproxy_out_port" default="$(eval str(14550 + int(arg('instance')) * 10))" />
     <arg name="fdm_port_in" default="$(eval str(9002 + int(arg('instance')) * 10))" />
     <arg name="fdm_port_out" default="$(eval str(9003 + int(arg('instance')) * 10))" />
-    <arg name="rendered_model_file" default="$(eval '/tmp/nexus_swarm_sim/' + arg('drone_id') + '_ardupilot.sdf')" />
+    <arg name="rendered_model_file" default="$(eval '/tmp/nexus_swarm_sim/' + arg('drone_model_name') + '_ardupilot.sdf')" />
     <arg name="enable_gimbal" default="true" />
     <arg name="sitl_add_param_file" default="$(find nexus_swarm_sim)/config/arducopter_gazebo_iris_sim.parm" />
     <arg name="enable_mavproxy" default="true" />
@@ -30,7 +33,8 @@
         <node name="model_spawner" pkg="nexus_swarm_sim" type="spawn_ardupilot_model.py" output="screen">
             <param name="template_path" value="$(arg ardupilot_gazebo_root)/models/iris_with_ardupilot/model.sdf" />
             <param name="output_path" value="$(arg rendered_model_file)" />
-            <param name="model_name" value="$(arg drone_id)" />
+            <param name="model_name" value="$(arg drone_model_name)" />
+            <param name="robot_namespace" value="$(arg drone_ns)" />
             <param name="to_ardupilot_port" value="$(arg fdm_port_out)" />
             <param name="from_ardupilot_port" value="$(arg fdm_port_in)" />
             <param name="x" value="$(arg x)" />
@@ -46,7 +50,7 @@
             <param name="frame" value="$(arg sitl_frame)" />
             <param name="instance" value="$(arg instance)" />
             <param name="sysid" value="$(arg sys_id)" />
-            <param name="use_dir" value="$(eval '/tmp/ardupilot_sitl_' + arg('drone_id'))" />
+            <param name="use_dir" value="$(eval '/tmp/ardupilot_sitl_' + arg('drone_model_name'))" />
             <param name="add_param_file" value="$(arg sitl_add_param_file)" />
             <param name="enable_mavproxy" value="$(arg enable_mavproxy)" />
             <param name="mavproxy_console" value="$(arg mavproxy_console)" />
