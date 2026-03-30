@@ -125,11 +125,18 @@ run_cmd() {
 }
 
 run_quiet() {
+    local log_file
     if [ "${DRY_RUN}" = "1" ]; then
         info "[dry-run] $*"
         return 0
     fi
-    "$@" > /dev/null 2>&1
+    log_file="$(mktemp)"
+    if ! "$@" >"${log_file}" 2>&1; then
+        cat "${log_file}" >&2
+        rm -f "${log_file}"
+        return 1
+    fi
+    rm -f "${log_file}"
 }
 
 change_dir() {
@@ -263,6 +270,27 @@ workspace_looks_initialized() {
     [ -f "${WORKSPACE_DIR}/build/CMakeCache.txt" ] || \
     [ -f "${WORKSPACE_DIR}/build/Makefile" ] || \
     [ -f "${WORKSPACE_DIR}/devel/.catkin" ]
+}
+
+catkin_make_build_state_is_stale() {
+    local cache_file makefile_file
+
+    cache_file="${WORKSPACE_DIR}/build/CMakeCache.txt"
+    makefile_file="${WORKSPACE_DIR}/build/Makefile"
+
+    if [ -f "${cache_file}" ]; then
+        if ! grep -Fq "CMAKE_HOME_DIRECTORY:INTERNAL=${WORKSPACE_DIR}/src" "${cache_file}" || \
+           ! grep -Fq "CMAKE_CACHEFILE_DIR:INTERNAL=${WORKSPACE_DIR}/build" "${cache_file}"; then
+            return 0
+        fi
+    fi
+
+    if [ -f "${makefile_file}" ] && \
+       ! grep -Fq "CMAKE_BINARY_DIR = ${WORKSPACE_DIR}/build" "${makefile_file}"; then
+        return 0
+    fi
+
+    return 1
 }
 
 use_whiptail() {
@@ -546,6 +574,15 @@ run_workspace_build() {
                 else
                     fail "This workspace appears to contain catkin build metadata. Clean build/devel/.catkin_tools or rerun with BUILD_TOOL=catkin_build."
                 fi
+            fi
+
+            if catkin_make_build_state_is_stale; then
+                if [ "${DRY_RUN}" = "1" ]; then
+                    warn "This workspace contains stale catkin_make metadata from a different workspace path. A real run would clean build/, devel/, logs/, and .catkin_tools/ before rebuilding."
+                    return 0
+                fi
+                info "Cleaning stale catkin_make build state that points to a different workspace path"
+                cleanup_workspace_build_state
             fi
 
             require_command catkin_make
