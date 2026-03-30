@@ -5,6 +5,7 @@ This directory contains the package-level documents that define scope, contracts
 ## Architecture
 
 - [architecture/PACKAGE_SCOPE.md](architecture/PACKAGE_SCOPE.md): package ownership, boundaries, non-goals, and intended downstream split
+- [architecture/SYSTEM_ARCHITECTURE.md](architecture/SYSTEM_ARCHITECTURE.md): high-level system architecture and package-to-package data flow
 - [architecture/DOWNSTREAM_PACKAGE_PLAN.md](architecture/DOWNSTREAM_PACKAGE_PLAN.md): mermaid overview of the planned simulator-to-downstream package split
 
 ## Downstream Packages
