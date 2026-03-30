@@ -43,13 +43,17 @@ mkdir -p ~/swarm_ws/src
 cd ~/swarm_ws/src
 git clone https://github.com/tayfurcnr/nexus_swarm_sim.git
 cd nexus_swarm_sim
-bash setup_ardupilot_noetic.sh
+bash setup.sh
 cd ~/swarm_ws
 source devel/setup.bash
 roslaunch nexus_swarm_sim full_swarm.launch num_drones:=3
 ```
 
 Dashboard is available at `http://localhost:8787` during `full_swarm.launch`.
+
+For a fresh workspace, the setup script defaults to `catkin build`. For an existing workspace, it auto-detects prior `catkin_make` vs `catkin build` usage and follows that tool.
+
+When run interactively, the installer asks whether to create a new workspace or use an existing one, then asks for the workspace path and build tool. If `whiptail` is available, it also shows button-based dialogs for step confirmation and a final success summary.
 
 ### Non-SITL Bringup
 
@@ -63,6 +67,53 @@ catkin_make
 source devel/setup.bash
 roslaunch nexus_swarm_sim models_only.launch num_drones:=3
 ```
+
+### Existing Workspace
+
+If you already have a ROS Noetic workspace, clone the package into that workspace and point the setup script at it:
+
+```bash
+cd /path/to/your_ws/src
+git clone https://github.com/tayfurcnr/nexus_swarm_sim.git
+cd nexus_swarm_sim
+WORKSPACE_DIR=/path/to/your_ws bash setup.sh
+```
+
+Optional override if you want to force the build tool:
+
+```bash
+WORKSPACE_DIR=/path/to/your_ws BUILD_TOOL=catkin_make bash setup.sh
+WORKSPACE_DIR=/path/to/your_ws BUILD_TOOL=catkin_build bash setup.sh
+```
+
+The same flow is also available with CLI flags:
+
+```bash
+bash setup.sh --workspace /path/to/your_ws --build-tool catkin_make
+bash setup.sh --workspace /path/to/your_ws --build-tool catkin_build --yes
+```
+
+When `--workspace /path/to/your_ws` is provided, the script treats an existing path with `src/` as an existing workspace. If the path does not exist yet, it initializes a new workspace there.
+
+If you intentionally want to migrate an existing workspace from one build tool to the other, use:
+
+```bash
+bash setup.sh --workspace /path/to/your_ws --build-tool catkin_make --force-switch-build-tool
+bash setup.sh --workspace /path/to/your_ws --build-tool catkin_build --force-switch-build-tool
+```
+
+This removes `build/`, `devel/`, `logs/`, and `.catkin_tools/` before rebuilding. `src/` is preserved.
+
+To preview the installer flow without changing the system:
+
+```bash
+bash setup.sh --dry-run
+bash setup.sh --workspace /path/to/your_ws --build-tool catkin_make --dry-run
+```
+
+After installation:
+- if you accepted the shell persistence step, new terminals are already configured through `~/.bashrc`
+- in the current terminal, run `source /path/to/your_ws/devel/setup.bash` before launching ROS commands
 
 ## Primary Launch Modes
 
@@ -120,7 +171,7 @@ Use the repository documents by purpose:
 - [docs/architecture/PACKAGE_SCOPE.md](docs/architecture/PACKAGE_SCOPE.md): package ownership, architectural boundary, and explicit non-goals
 - [docs/contracts/UWB_INTERFACE_CONTRACT.md](docs/contracts/UWB_INTERFACE_CONTRACT.md): UWB topic, message, and timestamp contract
 - [docs/planning/ROADMAP.md](docs/planning/ROADMAP.md): phased roadmap for realism and sim-to-real readiness
-- [setup_ardupilot_noetic.sh](setup_ardupilot_noetic.sh): automated setup for the full ArduPilot-backed environment
+- [setup.sh](setup.sh): automated setup for the full ArduPilot-backed environment
 
 ## Developer
 
@@ -132,6 +183,9 @@ Use the repository documents by purpose:
 - The setup script installs ArduPilot into `~/ardupilot` and `ardupilot_gazebo` into `~/ardupilot_gazebo`.
 - The package itself is expected to live inside a catkin workspace such as `~/swarm_ws/src/nexus_swarm_sim`.
 - On a new machine, prefer the setup script unless you intentionally want a non-SITL workflow.
+- `setup.sh` supports interactive workspace and build-tool selection and also accepts `--workspace`, `--build-tool`, `--dry-run`, `--force-switch-build-tool`, `WORKSPACE_DIR`, and `BUILD_TOOL`.
+- `--workspace /path` can target either an existing workspace or a new workspace location that should be initialized.
+- if you accept the shell persistence step, the installer appends the workspace source line and ArduPilot PATH exports to `~/.bashrc` only when they are missing
 - `swarm_uwb.world` loads a Gazebo world plugin that exposes `/uwb_simulator/check_los`; when `/uwb_simulator/use_gazebo_raycast:=true`, UWB LOS decisions come from Gazebo ray casting instead of only the probabilistic fallback.
 - UWB outputs are available on per-vehicle topics such as `/nexus/1/uwb/range` and `/nexus/1/uwb/raw_signal`; Gazebo model names remain flat (`nexus1`) while ROS-facing namespaces are hierarchical (`nexus/1`).
 - If a previous Gazebo instance did not exit cleanly, kill stale `gzserver` and `gzclient` processes before relaunching to avoid port binding conflicts.

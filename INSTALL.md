@@ -7,7 +7,7 @@
 
 ![Nexus Swarm Sim Logo](docs/logo.png)
 
-This guide describes the recommended installation and validation flow for `nexus_swarm_sim` on a clean machine.
+This guide describes the recommended installation, validation, and recovery flow for `nexus_swarm_sim`.
 
 ## Table Of Contents
 
@@ -50,7 +50,7 @@ This layout matches the current runtime expectations used by the launch files an
 
 ## What The Setup Script Installs
 
-Running [setup_ardupilot_noetic.sh](setup_ardupilot_noetic.sh) prepares the following:
+Running [setup.sh](setup.sh) prepares the following:
 - ROS, Gazebo, and MAVROS-related system packages
 - GeographicLib datasets required by MAVROS
 - Python dependencies from `requirements.txt`
@@ -61,6 +61,11 @@ Running [setup_ardupilot_noetic.sh](setup_ardupilot_noetic.sh) prepares the foll
 The setup script also supports:
 - interactive approval for long-running dependency steps
 - `--yes` for unattended or non-interactive installation
+- `WORKSPACE_DIR=/path/to/ws` to target an existing catkin workspace
+- `BUILD_TOOL=auto|catkin_build|catkin_make` to control the workspace build step
+- `--workspace /path/to/ws` and `--build-tool catkin_build|catkin_make|auto` as CLI flag equivalents
+- `--dry-run` to preview the selected flow and commands without making changes
+- `--force-switch-build-tool` to migrate an existing workspace to the selected build tool after cleaning old build metadata
 
 ## Recommended Fresh Install
 
@@ -76,35 +81,84 @@ git clone https://github.com/tayfurcnr/nexus_swarm_sim.git
 
 ```bash
 cd ~/swarm_ws/src/nexus_swarm_sim
-bash setup_ardupilot_noetic.sh
+bash setup.sh
 ```
 
 Non-interactive variant:
 
 ```bash
-bash setup_ardupilot_noetic.sh --yes
+bash setup.sh --yes
 ```
 
-### 3. Source the workspace
+Interactive mode asks:
+- create a new workspace or use an existing one
+- the target workspace path
+- which build tool to use for a new workspace
+- whether to keep or override the detected build tool for an existing workspace
+
+If `whiptail` is available, the installer uses button-based dialogs for workspace selection, step approvals, build-tool migration confirmation, and the final success summary.
+
+For a fresh workspace, the default build tool is `catkin build`. If the target workspace already contains `catkin_make` or `catkin build` metadata, the script detects that and offers to use the matching tool automatically.
+
+### 2A. Existing workspace variant
+
+If you already have a workspace and want to add `nexus_swarm_sim` into it:
+
+```bash
+cd /path/to/your_ws/src
+git clone https://github.com/tayfurcnr/nexus_swarm_sim.git
+cd nexus_swarm_sim
+WORKSPACE_DIR=/path/to/your_ws bash setup.sh
+```
+
+If you need to force the build tool explicitly:
+
+```bash
+WORKSPACE_DIR=/path/to/your_ws BUILD_TOOL=catkin_make bash setup.sh
+WORKSPACE_DIR=/path/to/your_ws BUILD_TOOL=catkin_build bash setup.sh
+```
+
+The same flow is also available with CLI flags:
+
+```bash
+bash setup.sh --workspace /path/to/your_ws --build-tool catkin_make
+bash setup.sh --workspace /path/to/your_ws --build-tool catkin_build --yes
+```
+
+When `--workspace /path/to/your_ws` is provided, the script uses that path directly. If the path already contains a catkin workspace with `src/`, it is treated as an existing workspace. If the path does not exist yet, the script initializes a new workspace there.
+
+To intentionally switch an existing workspace from one build system to the other:
+
+```bash
+bash setup.sh --workspace /path/to/your_ws --build-tool catkin_make --force-switch-build-tool
+bash setup.sh --workspace /path/to/your_ws --build-tool catkin_build --force-switch-build-tool
+```
+
+This removes `build/`, `devel/`, `logs/`, and `.catkin_tools/` before rebuilding. `src/` is preserved.
+
+Dry-run preview examples:
+
+```bash
+bash setup.sh --dry-run
+bash setup.sh --workspace /path/to/your_ws --build-tool catkin_make --dry-run
+```
+
+### 3. Load the environment
+
+If you accepted the shell persistence step, new terminals are already configured through `~/.bashrc`.
+
+For the current terminal, run:
 
 ```bash
 cd ~/swarm_ws
 source devel/setup.bash
 ```
 
-### 4. Add ArduPilot tools to PATH
+If you skipped shell persistence, also export the ArduPilot tool paths manually:
 
 ```bash
 export PATH=$PATH:$HOME/ardupilot/Tools/autotest
 export PATH=$PATH:$HOME/ardupilot/Tools
-```
-
-To persist this configuration:
-
-```bash
-echo 'export PATH=$PATH:$HOME/ardupilot/Tools/autotest' >> ~/.bashrc
-echo 'export PATH=$PATH:$HOME/ardupilot/Tools' >> ~/.bashrc
-source ~/.bashrc
 ```
 
 ## Pre-Launch Validation
@@ -119,7 +173,7 @@ ls ~/ardupilot_gazebo/models/iris_with_ardupilot/model.sdf
 rospack find mavros
 ```
 
-If all of these commands succeed, the core `full_swarm.launch` prerequisites are present.
+If all of these commands succeed, the core prerequisites for `full_swarm.launch` are present.
 
 ## Successful Install Checklist
 
@@ -135,7 +189,7 @@ A machine is considered ready for the full stack when all of the following are t
 
 ## Recommended Bringup Sequence
 
-For a new machine, validate the stack in layers rather than starting directly with the full swarm launch.
+On a new machine, validate the stack in layers rather than starting directly with the full swarm launch.
 
 ### 1. UWB-only smoke test
 
@@ -188,7 +242,8 @@ Validates the intended full-stack swarm workflow.
 Preferred recovery path:
 
 ```bash
-bash setup_ardupilot_noetic.sh
+cd ~/swarm_ws/src/nexus_swarm_sim
+bash setup.sh
 ```
 
 Manual recovery path:
@@ -208,7 +263,8 @@ cd ~/ardupilot
 Preferred recovery path:
 
 ```bash
-bash setup_ardupilot_noetic.sh
+cd ~/swarm_ws/src/nexus_swarm_sim
+bash setup.sh
 ```
 
 Manual recovery path:
