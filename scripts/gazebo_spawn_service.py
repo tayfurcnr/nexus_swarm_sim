@@ -2,11 +2,12 @@
 
 import os
 import sys
+import threading
 
 import rospy
-from gazebo_msgs.srv import SpawnModel
+from gazebo_msgs.srv import DeleteModel, GetWorldProperties, SpawnModel
 from geometry_msgs.msg import Pose
-from nexus_swarm_sim.srv import SpawnDrone, SpawnDroneResponse
+from nexus_swarm_sim.srv import DespawnDrone, DespawnDroneResponse, SpawnDrone, SpawnDroneResponse
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 if SCRIPT_DIR not in sys.path:
@@ -31,7 +32,7 @@ class GazeboSpawnService:
             rospy.get_param("~template_path", "~/ardupilot_gazebo/models/iris_with_ardupilot/model.sdf")
         )
         self._enable_gimbal = bool(rospy.get_param("~enable_gimbal", True))
-        self._num_drones = int(rospy.get_param("~num_drones", 1))
+        self._formation_capacity = int(rospy.get_param("~formation_capacity", rospy.get_param("~num_drones", 50)))
         self._formation_mode = rospy.get_param("~formation_mode", "fixed")
         self._formation = rospy.get_param("~formation", "line")
         self._formation_set = rospy.get_param("~formation_set", ["line", "triangle", "grid", "circle", "v"])
@@ -44,7 +45,7 @@ class GazeboSpawnService:
         }
 
         self._selected_formation, self._positions = resolve_positions(
-            self._num_drones,
+            self._formation_capacity,
             self._formation_mode,
             self._formation,
             self._formation_set,
@@ -53,11 +54,40 @@ class GazeboSpawnService:
             self._origin,
         )
         rospy.loginfo(
-            "[nexus_swarm_sim][spawn_service] ready prefix=%s num_drones=%d formation=%s",
+            "[nexus_swarm_sim][spawn_service] ready prefix=%s formation_capacity=%d formation=%s",
             self._drone_prefix,
-            self._num_drones,
+            self._formation_capacity,
             self._selected_formation,
         )
+        self._lock = threading.Lock()
+        self._vehicle_to_slot = {}
+        self._slot_to_vehicle = {}
+
+    def _allocate_slot(self, vehicle_name):
+        existing = self._vehicle_to_slot.get(vehicle_name)
+        if existing is not None:
+            return existing
+
+        for slot_index in range(1, self._formation_capacity + 1):
+            if slot_index not in self._slot_to_vehicle:
+                self._vehicle_to_slot[vehicle_name] = slot_index
+                self._slot_to_vehicle[slot_index] = vehicle_name
+                return slot_index
+
+        raise RuntimeError(f"no free formation slots available (capacity={self._formation_capacity})")
+
+    def _release_slot(self, vehicle_name):
+        slot_index = self._vehicle_to_slot.pop(vehicle_name, None)
+        if slot_index is not None:
+            self._slot_to_vehicle.pop(slot_index, None)
+        return slot_index
+
+    @staticmethod
+    def _model_exists(model_name):
+        rospy.wait_for_service("/gazebo/get_world_properties", timeout=30.0)
+        world_properties = rospy.ServiceProxy("/gazebo/get_world_properties", GetWorldProperties)
+        response = world_properties()
+        return model_name in response.model_names
 
     def handle(self, req):
         try:
@@ -66,17 +96,28 @@ class GazeboSpawnService:
                 raise ValueError("vehicle_name is empty")
 
             drone_index = _vehicle_index(vehicle_name)
-            if drone_index < 1 or drone_index > self._num_drones:
-                raise ValueError(
-                    f"vehicle_name={vehicle_name} resolved to index={drone_index}, outside configured num_drones={self._num_drones}"
-                )
+            if drone_index < 1:
+                raise ValueError(f"vehicle_name={vehicle_name} resolved to invalid index={drone_index}")
 
             model_name = build_model_name(self._drone_prefix, drone_index)
             robot_namespace = build_ros_namespace(self._drone_prefix, drone_index)
-            resolved_x, resolved_y, resolved_z = self._positions[drone_index - 1]
+            with self._lock:
+                slot_index = self._allocate_slot(vehicle_name)
+            resolved_x, resolved_y, resolved_z = self._positions[slot_index - 1]
             instance = drone_index - 1
             to_ardupilot_port = 9003 + instance * 10
             from_ardupilot_port = 9002 + instance * 10
+
+            if self._model_exists(model_name):
+                return SpawnDroneResponse(
+                    success=True,
+                    status_message=f"already active in slot {slot_index}",
+                    model_name=model_name,
+                    robot_namespace=robot_namespace,
+                    resolved_x=resolved_x,
+                    resolved_y=resolved_y,
+                    resolved_z=resolved_z,
+                )
 
             if not os.path.isfile(self._template_path):
                 raise FileNotFoundError(f"template not found: {self._template_path}")
@@ -104,8 +145,9 @@ class GazeboSpawnService:
 
             service_name = "/gazebo/spawn_sdf_model"
             rospy.loginfo(
-                "[nexus_swarm_sim][spawn_service] spawning vehicle=%s model=%s ns=%s at (%.2f, %.2f, %.2f)",
+                "[nexus_swarm_sim][spawn_service] spawning vehicle=%s slot=%d model=%s ns=%s at (%.2f, %.2f, %.2f)",
                 vehicle_name,
+                slot_index,
                 model_name,
                 robot_namespace,
                 resolved_x,
@@ -116,11 +158,13 @@ class GazeboSpawnService:
             spawn_model = rospy.ServiceProxy(service_name, SpawnModel)
             resp = spawn_model(model_name, model_xml, robot_namespace, pose, "world")
             if not resp.success:
+                with self._lock:
+                    self._release_slot(vehicle_name)
                 raise RuntimeError(resp.status_message)
 
             return SpawnDroneResponse(
                 success=True,
-                status_message=f"spawned via {service_name}",
+                status_message=f"spawned via {service_name} in slot {slot_index}",
                 model_name=model_name,
                 robot_namespace=robot_namespace,
                 resolved_x=resolved_x,
@@ -139,14 +183,51 @@ class GazeboSpawnService:
                 resolved_z=0.0,
             )
 
+    def handle_despawn(self, req):
+        try:
+            vehicle_name = str(req.vehicle_name).strip()
+            if not vehicle_name:
+                raise ValueError("vehicle_name is empty")
+
+            drone_index = _vehicle_index(vehicle_name)
+            if drone_index < 1:
+                raise ValueError(f"vehicle_name={vehicle_name} resolved to invalid index={drone_index}")
+
+            model_name = build_model_name(self._drone_prefix, drone_index)
+
+            if self._model_exists(model_name):
+                rospy.wait_for_service("/gazebo/delete_model", timeout=30.0)
+                delete_model = rospy.ServiceProxy("/gazebo/delete_model", DeleteModel)
+                response = delete_model(model_name)
+                if not response.success:
+                    raise RuntimeError(response.status_message)
+
+            with self._lock:
+                released_slot = self._release_slot(vehicle_name)
+
+            return DespawnDroneResponse(
+                success=True,
+                status_message="despawned" if released_slot is not None else "not assigned; nothing to release",
+                model_name=model_name,
+                released_slot=released_slot or 0,
+            )
+        except Exception as exc:
+            rospy.logerr("[nexus_swarm_sim][despawn_service] %s", exc)
+            return DespawnDroneResponse(
+                success=False,
+                status_message=str(exc),
+                model_name="",
+                released_slot=0,
+            )
+
 
 def main():
     rospy.init_node("gazebo_spawn_service", anonymous=False)
     server = GazeboSpawnService()
     rospy.Service("spawn_drone", SpawnDrone, server.handle)
+    rospy.Service("despawn_drone", DespawnDrone, server.handle_despawn)
     rospy.spin()
 
 
 if __name__ == "__main__":
     main()
-

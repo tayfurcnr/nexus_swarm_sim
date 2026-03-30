@@ -187,6 +187,8 @@ def main():
             "SIM_VEHICLE: Killing tasks",
             "Clean shutdown impossible, forcing an exit",
             "Unloading module ",
+            "Failed to load module: No module named 'adsb'",
+            "Failed to download /SRTM3/filelist_python",
         )
         relay_thread = threading.Thread(
             target=relay_filtered_output,

@@ -1,6 +1,7 @@
 <?xml version="1.0"?>
 <launch>
-    <arg name="num_drones" default="4" />
+    <arg name="num_drones" default="50" />
+    <arg name="formation_capacity" default="$(arg num_drones)" />
     <arg name="drone_prefix" default="nexus" />
     <arg name="spawn_config" default="$(find nexus_swarm_sim)/config/spawn_formation.yaml" />
     <arg name="template_path" default="$(env HOME)/ardupilot_gazebo/models/iris_with_ardupilot/model.sdf" />
@@ -12,6 +13,7 @@
           output="screen">
         <rosparam file="$(arg spawn_config)" />
         <param name="num_drones" value="$(arg num_drones)" />
+        <param name="formation_capacity" value="$(arg formation_capacity)" />
         <param name="drone_prefix" value="$(arg drone_prefix)" />
         <param name="template_path" value="$(arg template_path)" />
         <param name="enable_gimbal" value="$(arg enable_gimbal)" />
