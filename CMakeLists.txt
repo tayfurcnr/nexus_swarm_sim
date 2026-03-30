@@ -25,6 +25,7 @@ add_message_files(
 add_service_files(
   FILES
   CheckLineOfSight.srv
+  SpawnDrone.srv
 )
 
 generate_messages(
@@ -98,6 +99,7 @@ catkin_install_python(PROGRAMS
   scripts/launch_mavros_bridge.py
   scripts/configure_stream_rates.py
   scripts/spawn_ardupilot_model.py
+  scripts/gazebo_spawn_service.py
   scripts/swarm_dashboard.py
   src/swarm_uwb_monitor.py
   scripts/swarm_launcher.py

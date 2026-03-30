@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="num_drones" default="4" />
+    <arg name="drone_prefix" default="nexus" />
+    <arg name="spawn_config" default="$(find nexus_swarm_sim)/config/spawn_formation.yaml" />
+    <arg name="template_path" default="$(env HOME)/ardupilot_gazebo/models/iris_with_ardupilot/model.sdf" />
+    <arg name="enable_gimbal" default="true" />
+
+    <node pkg="nexus_swarm_sim"
+          type="gazebo_spawn_service.py"
+          name="gazebo_spawn_service"
+          output="screen">
+        <rosparam file="$(arg spawn_config)" />
+        <param name="num_drones" value="$(arg num_drones)" />
+        <param name="drone_prefix" value="$(arg drone_prefix)" />
+        <param name="template_path" value="$(arg template_path)" />
+        <param name="enable_gimbal" value="$(arg enable_gimbal)" />
+    </node>
+</launch>
