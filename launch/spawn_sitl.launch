@@ -5,7 +5,7 @@
     <arg name="drone_index" default="1" />
     <arg name="drone_id" default="$(eval arg('drone_prefix') + '/' + str(arg('drone_index')))" />
     <arg name="drone_model_name" default="$(eval arg('drone_prefix') + str(arg('drone_index')))" />
-    <arg name="drone_ns" default="$(eval '/' + arg('drone_id'))" />
+    <arg name="drone_ns" default="$(eval '/' + str(arg('drone_id')))" />
     <arg name="instance" default="0" />
     <arg name="sys_id" default="1" />
     <arg name="x" default="0.0" />
